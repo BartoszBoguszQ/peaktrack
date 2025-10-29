@@ -1,5 +1,4 @@
 <script setup>
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Link } from '@inertiajs/vue3';
 </script>
 
@@ -9,7 +8,10 @@ import { Link } from '@inertiajs/vue3';
     >
         <div>
             <Link href="/">
-                <ApplicationLogo class="h-20 w-20 fill-current text-gray-500" />
+                <div class="flex items-center gap-3">
+                    <div class="h-9 w-9 rounded-lg bg-gray-900 dark:bg-white grid place-items-center text-white dark:text-gray-900 font-bold">PT</div>
+                    <span class="text-lg font-semibold">PeakTrack</span>
+                </div>
             </Link>
         </div>
 

@@ -7,19 +7,19 @@ const props = defineProps({
 })
 
 const features = [
-    { icon: 'bi-activity', title: 'Treningi wytrzymałościowe', description: 'Bieganie, rower, pływanie z tempem, tętnem, dystansem i przewyższeniami.' },
-    { icon: 'bi-dumbbell', title: 'Trening siłowy', description: 'Serie, powtórzenia, ciężary, RPE, superserie, PR-y.' },
-    { icon: 'bi-bar-chart-line', title: 'Analiza', description: 'Wykresy postępów, strefy tętna, tygodniowe i miesięczne podsumowania.' },
-    { icon: 'bi-calendar3', title: 'Planowanie', description: 'Plan tygodnia, cele, przypomnienia i streak aktywności.' },
-    { icon: 'bi-trophy', title: 'Rekordy i PB', description: 'Najlepsze czasy i maksymalne ciężary w jednym miejscu.' },
-    { icon: 'bi-plug', title: 'Integracje', description: 'Import z zegarków/apek, eksport CSV/GPX (roadmap).' }
+    { icon: 'bi-activity', title: 'Treningi wytrzymałościowe', description: 'Bieganie, rower, pływanie.' },
+    { icon: 'bi-dumbbell', title: 'Trening siłowy', description: 'Serie, powtórzenia, ciężary' },
+    { icon: 'bi-bar-chart-line', title: 'Analiza', description: 'Wykresy postępów, tygodniowe i miesięczne podsumowania.' },
+    { icon: 'bi-calendar3', title: 'Planowanie', description: 'Plan tygodnia, cele, przypomnienia.' },
+    { icon: 'bi-trophy', title: 'Rekordy i PB', description: 'Najlepsze czasy i wyniki w jednym miejscu.' },
+    { icon: 'bi-plug', title: 'Integracje', description: 'Import z zegarków/apek, eksport CSV/GPX.' }
 ]
 
 const valueProps = [
-    { label: 'Jedna aplikacja', value: 'wytrzymałość + siła' },
-    { label: 'Szybkie dodawanie', value: '2–3 kliknięcia' },
-    { label: 'Czytelne wykresy', value: 'bez zbędnego szumu' },
-    { label: 'Mobile-first', value: 'działa świetnie na telefonie' }
+    { label: 'Jedna aplikacja' },
+    { label: 'Prosta w obsłudze' },
+    { label: 'Czytelne wykresy' },
+    { label: 'Wersja na urządzenia mobilne' }
 ]
 </script>
 
@@ -34,7 +34,7 @@ const valueProps = [
             <nav class="flex items-center gap-2" v-if="canLogin">
                 <Link v-if="$page.props.auth?.user" :href="route('dashboard')" class="rounded-xl px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900">Przejdź do aplikacji</Link>
                 <template v-else>
-                    <Link :href="route('login')" class="rounded-xl px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900">Zaloguj</Link>
+                    <Link :href="route('login')" class="rounded-xl px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900">Logowanie</Link>
                     <Link v-if="canRegister" :href="route('register')" class="rounded-xl px-4 py-2 border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">Rejestracja</Link>
                 </template>
             </nav>
@@ -74,7 +74,6 @@ const valueProps = [
 
         <section class="mx-auto max-w-7xl px-6 py-10">
             <h2 class="text-2xl font-bold">Co potrafi PeakTrack</h2>
-            <p class="mt-2 text-gray-600 dark:text-gray-300">Założenia i core aplikacji w skrócie.</p>
             <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div v-for="feature in features" :key="feature.title" class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                     <div class="flex items-start gap-3">
@@ -94,11 +93,11 @@ const valueProps = [
                 <ol class="mt-4 grid gap-3 sm:grid-cols-3">
                     <li class="rounded-2xl border border-gray-200 p-4 text-sm dark:border-gray-800">
                         <div class="font-semibold"><i class="bi bi-plus-circle me-2"></i>Dodaj trening</div>
-                        <div class="text-gray-600 dark:text-gray-300">Szybkie formularze dla biegania, siły i innych aktywności.</div>
+                        <div class="text-gray-600 dark:text-gray-300">Szybkie formularze dla biegania, treningów siłowych i innych aktywności.</div>
                     </li>
                     <li class="rounded-2xl border border-gray-200 p-4 text-sm dark:border-gray-800">
                         <div class="font-semibold"><i class="bi bi-graph-up-arrow me-2"></i>Analizuj</div>
-                        <div class="text-gray-600 dark:text-gray-300">Tempo, tętno, objętość, PR-y i trendy tygodniowe.</div>
+                        <div class="text-gray-600 dark:text-gray-300">Tempo, tętno, objętość treningowa.</div>
                     </li>
                     <li class="rounded-2xl border border-gray-200 p-4 text-sm dark:border-gray-800">
                         <div class="font-semibold"><i class="bi bi-calendar-check me-2"></i>Planuj</div>
@@ -127,7 +126,7 @@ const valueProps = [
         </section>
 
         <footer class="mx-auto max-w-7xl px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            © {{ new Date().getFullYear() }} PeakTrack. Wszystkie prawa zastrzeżone.
+            © {{ new Date().getFullYear() }} PeakTrack.
         </footer>
     </div>
 </template>
