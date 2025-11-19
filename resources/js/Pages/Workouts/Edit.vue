@@ -4,14 +4,18 @@ import { Head, useForm, Link } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import axios from 'axios'
 
+const props = defineProps({
+    workout: { type: Object, required: true }
+})
+
 const form = useForm({
-    date: new Date().toISOString().slice(0, 10),
-    type: 'Run',
-    duration_seconds: 0,
-    distance_km: 0,
-    calories: 0,
-    notes: '',
-    exercises: []
+    date: props.workout.date,
+    type: props.workout.type,
+    duration_seconds: props.workout.duration_seconds ?? 0,
+    distance_km: props.workout.distance_km ?? 0,
+    calories: props.workout.calories ?? 0,
+    notes: props.workout.notes ?? '',
+    exercises: props.workout.exercises ?? []
 })
 
 const isStrength = computed(() => form.type === 'Strength')
@@ -20,7 +24,7 @@ const durationHms = ref('00:00:00')
 
 function toSeconds(hms) {
     const [h, m, s] = (hms || '0:0:0').split(':').map(v => parseInt(v || '0', 10))
-    return (h || 0) * 3600 + (m || 0) * 60 + (s || 0)
+    return h * 3600 + m * 60 + s
 }
 
 function fromSeconds(seconds) {
@@ -122,14 +126,10 @@ async function searchExercises() {
     exerciseSearchLoading.value = true
     try {
         const response = await axios.get('/api/exercises/search', {
-            params: { query: exerciseSearchQuery.value }
+            params: { q: exerciseSearchQuery.value }
         })
         const data = response.data
-        exerciseSearchResults.value = Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-                ? data
-                : []
+        exerciseSearchResults.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
     } catch (e) {
         exerciseSearchError.value = 'Search failed'
     } finally {
@@ -186,27 +186,27 @@ function submit() {
                 : []
     }
 
-    form.transform(() => payload).post('/workouts')
+    form.transform(() => payload).put(`/workouts/${props.workout.id}`)
 }
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <Head title="Add workout" />
+        <Head title="Edit workout" />
         <div class="py-6">
             <div class="max-w-3xl mx-auto px-4 space-y-6">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                            Add workout
+                            Edit workout
                         </h1>
                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                            Log a new training session.
+                            Update details of your training session.
                         </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <Link
-                            href="/workouts"
+                            :href="route('workouts.show', props.workout.id)"
                             class="inline-flex items-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
                         >
                             Back
@@ -218,9 +218,7 @@ function submit() {
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4 space-y-4">
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Date
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Date</label>
                                 <input
                                     v-model="form.date"
                                     type="date"
@@ -228,27 +226,20 @@ function submit() {
                                 />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Type
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Type</label>
                                 <select
                                     v-model="form.type"
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                 >
                                     <option value="Run">Run</option>
-                                    <option value="Ride">Ride</option>
-                                    <option value="Swim">Swim</option>
                                     <option value="Strength">Strength</option>
-                                    <option value="Other">Other</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Time (hh:mm:ss)
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Time (hh:mm:ss)</label>
                                 <input
                                     v-model="durationHms"
                                     type="text"
@@ -257,9 +248,7 @@ function submit() {
                                 />
                             </div>
                             <div v-if="!isStrength">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Distance [km]
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Distance [km]</label>
                                 <input
                                     v-model.number="form.distance_km"
                                     type="number"
@@ -269,9 +258,7 @@ function submit() {
                                 />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Calories
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Calories</label>
                                 <input
                                     v-model.number="form.calories"
                                     type="number"
@@ -282,9 +269,7 @@ function submit() {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                Notes
-                            </label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Notes</label>
                             <textarea
                                 v-model="form.notes"
                                 rows="3"
@@ -297,8 +282,17 @@ function submit() {
                         v-if="isStrength"
                         class="rounded-2xl bg-white dark:bg-gray-800 p-4 space-y-4"
                     >
-                        <div class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Exercises
+                        <div class="flex items-center justify-between">
+                            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                                Exercises
+                            </div>
+                            <button
+                                type="button"
+                                class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                @click="addExercise"
+                            >
+                                Add exercise
+                            </button>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">
@@ -492,6 +486,7 @@ function submit() {
                                     </tbody>
                                 </table>
                             </div>
+
                             <div class="mt-3">
                                 <button
                                     type="button"
@@ -502,31 +497,15 @@ function submit() {
                                 </button>
                             </div>
                         </div>
-
-                        <div class="mt-4">
-                            <button
-                                type="button"
-                                class="inline-flex w-full items-center justify-center rounded-xl border border-dashed border-blue-400 px-4 py-3 text-sm font-semibold text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-300 dark:hover:bg-blue-900/30"
-                                @click="addExercise"
-                            >
-                                + Add exercise
-                            </button>
-                        </div>
                     </div>
 
-                    <div class="flex items-center justify-between gap-3">
-                        <Link
-                            href="/workouts"
-                            class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300"
-                        >
-                            Cancel
-                        </Link>
+                    <div class="flex justify-end">
                         <button
                             type="submit"
                             class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                             :disabled="form.processing"
                         >
-                            Save workout
+                            Save changes
                         </button>
                     </div>
                 </form>

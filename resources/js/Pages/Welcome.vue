@@ -24,7 +24,7 @@ const valueProps = [
 </script>
 
 <template>
-    <Head title="PeakTrack — Monitor and analyze your training" />
+    <Head title="PeakTrack - Monitor and analyze your training" />
     <div class="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900 dark:from-gray-950 dark:to-gray-900 dark:text-gray-100">
         <header class="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
             <div class="flex items-center gap-3">

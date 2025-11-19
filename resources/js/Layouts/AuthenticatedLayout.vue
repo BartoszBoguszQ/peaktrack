@@ -1,31 +1,28 @@
 <script setup>
-import {ref, watchEffect} from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import {Link} from '@inertiajs/vue3';
+import { ref, watchEffect } from 'vue'
+import ApplicationLogo from '@/Components/ApplicationLogo.vue'
+import Dropdown from '@/Components/Dropdown.vue'
+import DropdownLink from '@/Components/DropdownLink.vue'
+import NavLink from '@/Components/NavLink.vue'
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue'
+import { Link } from '@inertiajs/vue3'
 
-const showingNavigationDropdown = ref(false);
+const showingNavigationDropdown = ref(false)
 
-const isDark = ref(document.documentElement.classList.contains('dark'));
+const isDark = ref(document.documentElement.classList.contains('dark'))
 watchEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark.value);
-    localStorage.setItem('isDark', isDark.value ? '1' : '0');
-});
+    document.documentElement.classList.toggle('dark', isDark.value)
+    localStorage.setItem('isDark', isDark.value ? '1' : '0')
+})
 </script>
 
 <template>
     <div>
         <div class="min-h-screen bg-gray-100 dark:bg-gray-950">
             <nav class="border-b border-gray-100 bg-white dark:bg-gray-900 dark:border-gray-800">
-
-                <!-- Primary Navigation Menu -->
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="flex h-16 justify-between">
                         <div class="flex">
-                            <!-- Logo -->
                             <div class="flex shrink-0 items-center">
                                 <Link :href="route('dashboard')">
                                     <ApplicationLogo
@@ -34,16 +31,45 @@ watchEffect(() => {
                                 </Link>
                             </div>
 
-                            <!-- Navigation Links -->
-                            <div
-                                class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
-                            >
+                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
                                     :href="route('dashboard')"
                                     :active="route().current('dashboard')"
                                     class="dark:text-white"
                                 >
                                     Dashboard
+                                </NavLink>
+
+                                <NavLink
+                                    :href="route('workouts.index')"
+                                    :active="route().current('workouts.*')"
+                                    class="dark:text-white"
+                                >
+                                    Workouts
+                                </NavLink>
+
+                                <NavLink
+                                    :href="route('analytics.index')"
+                                    :active="route().current('analytics.index')"
+                                    class="dark:text-white"
+                                >
+                                    Endurance Analytics
+                                </NavLink>
+
+                                <NavLink
+                                    :href="route('strength.exercises.index')"
+                                    :active="route().current('strength.exercises.index')"
+                                    class="dark:text-white"
+                                >
+                                    Strength Analytics
+                                </NavLink>
+
+                                <NavLink
+                                    :href="route('records.index')"
+                                    :active="route().current('records.index')"
+                                    class="dark:text-white"
+                                >
+                                    Personal Records
                                 </NavLink>
                             </div>
                         </div>
@@ -68,7 +94,6 @@ watchEffect(() => {
                                 </svg>
                             </button>
 
-                            <!-- Settings Dropdown -->
                             <div class="relative ms-3">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
@@ -113,13 +138,9 @@ watchEffect(() => {
                             </div>
                         </div>
 
-                        <!-- Hamburger -->
                         <div class="-me-2 flex items-center sm:hidden">
                             <button
-                                @click="
-                                    showingNavigationDropdown =
-                                        !showingNavigationDropdown
-                                "
+                                @click="showingNavigationDropdown = !showingNavigationDropdown"
                                 class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
                             >
                                 <svg
@@ -131,8 +152,7 @@ watchEffect(() => {
                                     <path
                                         :class="{
                                             hidden: showingNavigationDropdown,
-                                            'inline-flex':
-                                                !showingNavigationDropdown,
+                                            'inline-flex': !showingNavigationDropdown,
                                         }"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
@@ -142,8 +162,7 @@ watchEffect(() => {
                                     <path
                                         :class="{
                                             hidden: !showingNavigationDropdown,
-                                            'inline-flex':
-                                                showingNavigationDropdown,
+                                            'inline-flex': showingNavigationDropdown,
                                         }"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
@@ -156,7 +175,6 @@ watchEffect(() => {
                     </div>
                 </div>
 
-                <!-- Responsive Navigation Menu -->
                 <div
                     :class="{
                         block: showingNavigationDropdown,
@@ -171,16 +189,39 @@ watchEffect(() => {
                         >
                             Dashboard
                         </ResponsiveNavLink>
+
+                        <ResponsiveNavLink
+                            :href="route('workouts.index')"
+                            :active="route().current('workouts.*')"
+                        >
+                            Workouts
+                        </ResponsiveNavLink>
+
+                        <ResponsiveNavLink
+                            :href="route('analytics.index')"
+                            :active="route().current('analytics.index')"
+                        >
+                            Endurance Analytics
+                        </ResponsiveNavLink>
+
+                        <ResponsiveNavLink
+                            :href="route('strength.exercises.index')"
+                            :active="route().current('strength.exercises.index')"
+                        >
+                            Strength Analytics
+                        </ResponsiveNavLink>
+
+                        <ResponsiveNavLink
+                            :href="route('records.index')"
+                            :active="route().current('records.index')"
+                        >
+                            Personal Records
+                        </ResponsiveNavLink>
                     </div>
 
-                    <!-- Responsive Settings Options -->
-                    <div
-                        class="border-t border-gray-200 pb-1 pt-4"
-                    >
+                    <div class="border-t border-gray-200 pb-1 pt-4">
                         <div class="px-4">
-                            <div
-                                class="text-base font-medium text-gray-800"
-                            >
+                            <div class="text-base font-medium text-gray-800">
                                 {{ $page.props.auth.user.name }}
                             </div>
                             <div class="text-sm font-medium text-gray-500">
@@ -204,17 +245,17 @@ watchEffect(() => {
                 </div>
             </nav>
 
-            <!-- Page Heading -->
-            <header class="bg-white shadow dark:bg-gray-900 dark:shadow-none dark:border-b dark:border-gray-800"
-                    v-if="$slots.header">
+            <header
+                class="bg-white shadow dark:bg-gray-900 dark:shadow-none dark:border-b dark:border-gray-800"
+                v-if="$slots.header"
+            >
                 <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                    <slot name="header"/>
+                    <slot name="header" />
                 </div>
             </header>
 
-            <!-- Page Content -->
             <main class="text-gray-900 dark:text-gray-100">
-                <slot/>
+                <slot />
             </main>
         </div>
     </div>

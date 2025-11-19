@@ -75,8 +75,30 @@ const recent = ref(page.props?.recent ?? [
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="font-semibold text-gray-900 dark:text-white mb-2">Quick actions</div>
                         <div class="space-y-2">
-                            <Link href="/workouts/create" class="w-full inline-flex items-center justify-center rounded-lg bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">Add workout</Link>
-                            <Link href="/workouts" class="w-full inline-flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2">Browse workouts</Link>
+                            <Link
+                                href="/workouts/create"
+                                class="w-full inline-flex items-center justify-center rounded-lg bg-blue-600 text-white px-4 py-2 hover:bg-blue-700"
+                            >
+                                Add workout
+                            </Link>
+                            <Link
+                                href="/workouts"
+                                class="w-full inline-flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2"
+                            >
+                                Browse workouts
+                            </Link>
+                            <Link
+                                href="/records"
+                                class="w-full inline-flex items-center justify-center rounded-lg bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700"
+                            >
+                                Best results
+                            </Link>
+                            <Link
+                                :href="route('strength.exercises.index')"
+                                class="w-full inline-flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2"
+                            >
+                                Strength exercises
+                            </Link>
                         </div>
                     </div>
                 </div>
