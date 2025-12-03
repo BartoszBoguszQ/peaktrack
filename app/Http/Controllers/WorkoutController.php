@@ -7,12 +7,62 @@ use App\Models\Workout;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSet;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Illuminate\Support\Carbon;
 
 class WorkoutController extends Controller
 {
+    protected function buildAnalyticsStats(Collection $workouts): array
+    {
+        $now = Carbon::now();
+
+        $weekly = [];
+        for ($i = 7; $i >= 0; $i--) {
+            $start = $now->copy()->startOfWeek()->subWeeks($i);
+            $end = $start->copy()->endOfWeek();
+
+            $rangeWorkouts = $workouts->filter(function (Workout $workout) use ($start, $end) {
+                if (!$workout->date) {
+                    return false;
+                }
+                $date = $workout->date instanceof Carbon ? $workout->date : Carbon::parse($workout->date);
+                return $date->between($start, $end);
+            });
+
+            $weekly[] = [
+                'label' => $start->format('d.m') . ' - ' . $end->format('d.m'),
+                'workouts' => $rangeWorkouts->count(),
+                'distance_km' => (float) $rangeWorkouts->sum('distance_km'),
+                'calories' => (int) $rangeWorkouts->sum('calories'),
+            ];
+        }
+
+        $monthly = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $start = $now->copy()->startOfMonth()->subMonths($i);
+            $end = $start->copy()->endOfMonth();
+
+            $rangeWorkouts = $workouts->filter(function (Workout $workout) use ($start, $end) {
+                if (!$workout->date) {
+                    return false;
+                }
+                $date = $workout->date instanceof Carbon ? $workout->date : Carbon::parse($workout->date);
+                return $date->between($start, $end);
+            });
+
+            $monthly[] = [
+                'label' => $start->format('m.Y'),
+                'workouts' => $rangeWorkouts->count(),
+                'distance_km' => (float) $rangeWorkouts->sum('distance_km'),
+                'calories' => (int) $rangeWorkouts->sum('calories'),
+            ];
+        }
+
+        return [$weekly, $monthly];
+    }
+
     public function index(Request $request)
     {
         $authenticatedUser = $request->user();
@@ -290,62 +340,45 @@ class WorkoutController extends Controller
     public function analytics(Request $request)
     {
         $user = $request->user();
-        $today = Carbon::today();
 
-        $fromWeekly = $today->copy()->subWeeks(7)->startOfWeek();
-        $fromMonthly = $today->copy()->subMonths(5)->startOfMonth();
-
-        $weeklySource = Workout::where('user_id', $user->id)
-            ->where('date', '>=', $fromWeekly)
-            ->get();
-
-        $weekly = $weeklySource
-            ->groupBy(function (Workout $w) {
-                return optional($w->date)->startOfWeek()->toDateString();
-            })
-            ->map(function ($group, $key) {
-                $date = Carbon::parse($key);
-                return [
-                    'week_start' => $key,
-                    'label' => $date->format('d.m'),
-                    'workouts' => $group->count(),
-                    'distance_km' => (float) $group->sum('distance_km'),
-                    'duration_seconds' => (int) $group->sum('duration_seconds'),
-                    'calories' => (int) $group->sum('calories'),
-                ];
-            })
-            ->values()
-            ->sortBy('week_start')
+        $availableTypes = Workout::where('user_id', $user->id)
+            ->whereNotNull('type')
+            ->select('type')
+            ->distinct()
+            ->pluck('type')
             ->values()
             ->all();
 
-        $monthlySource = Workout::where('user_id', $user->id)
-            ->where('date', '>=', $fromMonthly)
-            ->get();
+        $requestedTypes = $request->input('types');
 
-        $monthly = $monthlySource
-            ->groupBy(function (Workout $w) {
-                return optional($w->date)->startOfMonth()->toDateString();
-            })
-            ->map(function ($group, $key) {
-                $date = Carbon::parse($key);
-                return [
-                    'month_start' => $key,
-                    'label' => $date->format('m.Y'),
-                    'workouts' => $group->count(),
-                    'distance_km' => (float) $group->sum('distance_km'),
-                    'duration_seconds' => (int) $group->sum('duration_seconds'),
-                    'calories' => (int) $group->sum('calories'),
-                ];
-            })
-            ->values()
-            ->sortBy('month_start')
-            ->values()
-            ->all();
+        if (is_null($requestedTypes)) {
+            $selectedTypes = $availableTypes;
+        } else {
+            if (!is_array($requestedTypes)) {
+                $requestedTypes = [$requestedTypes];
+            }
+            $selectedTypes = array_values(array_intersect($requestedTypes, $availableTypes));
+        }
+
+        $workoutsQuery = Workout::where('user_id', $user->id)
+            ->whereNotNull('date')
+            ->where('duration_seconds', '>', 0);
+
+        if (!empty($selectedTypes)) {
+            $workoutsQuery->whereIn('type', $selectedTypes);
+        }
+
+        $workouts = $workoutsQuery->get();
+
+        [$weekly, $monthly] = $this->buildAnalyticsStats($workouts);
 
         return Inertia::render('Analytics/Overview', [
             'weekly' => $weekly,
             'monthly' => $monthly,
+            'filters' => [
+                'available_types' => $availableTypes,
+                'selected_types' => $selectedTypes,
+            ],
         ]);
     }
 
@@ -366,43 +399,20 @@ class WorkoutController extends Controller
             ->where('duration_seconds', '>', 0)
             ->get();
 
-        $runWorkouts = $allWorkouts->where('type', 'Run')->where('distance_km', '>', 0);
-        $rideWorkouts = $allWorkouts->where('type', 'Ride')->where('distance_km', '>', 0);
-        $swimWorkouts = $allWorkouts->where('type', 'Swim')->where('distance_km', '>', 0);
+        $runWorkouts = $allWorkouts
+            ->where('type', 'Run')
+            ->where('distance_km', '>', 0);
 
-        $bestForDistance = function ($workoutsCollection, float $targetDistanceKm, float $tolerance = 0.1): ?array {
-            if ($workoutsCollection->isEmpty()) {
-                return null;
-            }
+        $rideWorkouts = $allWorkouts
+            ->where('type', 'Ride')
+            ->where('distance_km', '>', 0);
 
-            $minimumDistance = $targetDistanceKm * (1 - $tolerance);
-            $maximumDistance = $targetDistanceKm * (1 + $tolerance);
-
-            $candidateWorkout = $workoutsCollection
-                ->filter(function (Workout $workoutModel) use ($minimumDistance, $maximumDistance) {
-                    return $workoutModel->distance_km >= $minimumDistance && $workoutModel->distance_km <= $maximumDistance;
-                })
-                ->sortBy('duration_seconds')
-                ->first();
-
-            if (! $candidateWorkout) {
-                return null;
-            }
-
-            $paceSecondsPerKm = $candidateWorkout->distance_km > 0
-                ? (int) round($candidateWorkout->duration_seconds / max($candidateWorkout->distance_km, 0.0001))
-                : null;
-
-            return [
-                'workout_id' => $candidateWorkout->id,
-                'date' => optional($candidateWorkout->date)->toDateString(),
-                'distance_km' => (float) $candidateWorkout->distance_km,
-                'duration_seconds' => (int) $candidateWorkout->duration_seconds,
-                'pace_seconds_per_km' => $paceSecondsPerKm,
-            ];
-        };
+        $swimWorkouts = $allWorkouts
+            ->where('type', 'Swim')
+            ->where('distance_km', '>', 0);
 
         $runLongestWorkout = $runWorkouts->sortByDesc('distance_km')->first();
+
         $runFastestOverallWorkout = $runWorkouts
             ->filter(function (Workout $workoutModel) {
                 return $workoutModel->duration_seconds > 0 && $workoutModel->distance_km > 0;
@@ -414,6 +424,34 @@ class WorkoutController extends Controller
 
         $rideLongestWorkout = $rideWorkouts->sortByDesc('distance_km')->first();
         $swimLongestWorkout = $swimWorkouts->sortByDesc('distance_km')->first();
+
+        $runMaxCaloriesWorkout = $runWorkouts
+            ->filter(function (Workout $workoutModel) {
+                return !is_null($workoutModel->calories) && $workoutModel->calories > 0;
+            })
+            ->sortByDesc('calories')
+            ->first();
+
+        $rideMaxCaloriesWorkout = $rideWorkouts
+            ->filter(function (Workout $workoutModel) {
+                return !is_null($workoutModel->calories) && $workoutModel->calories > 0;
+            })
+            ->sortByDesc('calories')
+            ->first();
+
+        $swimMaxCaloriesWorkout = $swimWorkouts
+            ->filter(function (Workout $workoutModel) {
+                return !is_null($workoutModel->calories) && $workoutModel->calories > 0;
+            })
+            ->sortByDesc('calories')
+            ->first();
+
+        $maxCaloriesWorkout = $allWorkouts
+            ->filter(function (Workout $workoutModel) {
+                return !is_null($workoutModel->calories) && $workoutModel->calories > 0;
+            })
+            ->sortByDesc('calories')
+            ->first();
 
         $endurance = [
             'run' => [
@@ -432,11 +470,13 @@ class WorkoutController extends Controller
                         $runFastestOverallWorkout->duration_seconds / max($runFastestOverallWorkout->distance_km, 0.0001)
                     ),
                 ] : null,
-                'best_400m' => $bestForDistance($runWorkouts, 0.4, 0.15),
-                'best_1k' => $bestForDistance($runWorkouts, 1.0, 0.1),
-                'best_mile' => $bestForDistance($runWorkouts, 1.609, 0.1),
-                'best_5k' => $bestForDistance($runWorkouts, 5.0, 0.1),
-                'best_10k' => $bestForDistance($runWorkouts, 10.0, 0.1),
+                'max_calories' => $runMaxCaloriesWorkout ? [
+                    'workout_id' => $runMaxCaloriesWorkout->id,
+                    'date' => optional($runMaxCaloriesWorkout->date)->toDateString(),
+                    'distance_km' => (float) $runMaxCaloriesWorkout->distance_km,
+                    'duration_seconds' => (int) $runMaxCaloriesWorkout->duration_seconds,
+                    'calories' => (int) $runMaxCaloriesWorkout->calories,
+                ] : null,
             ],
             'ride' => [
                 'longest' => $rideLongestWorkout ? [
@@ -445,9 +485,13 @@ class WorkoutController extends Controller
                     'distance_km' => (float) $rideLongestWorkout->distance_km,
                     'duration_seconds' => (int) $rideLongestWorkout->duration_seconds,
                 ] : null,
-                'best_5k' => $bestForDistance($rideWorkouts, 5.0, 0.2),
-                'best_20k' => $bestForDistance($rideWorkouts, 20.0, 0.2),
-                'best_40k' => $bestForDistance($rideWorkouts, 40.0, 0.2),
+                'max_calories' => $rideMaxCaloriesWorkout ? [
+                    'workout_id' => $rideMaxCaloriesWorkout->id,
+                    'date' => optional($rideMaxCaloriesWorkout->date)->toDateString(),
+                    'distance_km' => (float) $rideMaxCaloriesWorkout->distance_km,
+                    'duration_seconds' => (int) $rideMaxCaloriesWorkout->duration_seconds,
+                    'calories' => (int) $rideMaxCaloriesWorkout->calories,
+                ] : null,
             ],
             'swim' => [
                 'longest' => $swimLongestWorkout ? [
@@ -456,9 +500,23 @@ class WorkoutController extends Controller
                     'distance_km' => (float) $swimLongestWorkout->distance_km,
                     'duration_seconds' => (int) $swimLongestWorkout->duration_seconds,
                 ] : null,
-                'best_100m' => $bestForDistance($swimWorkouts, 0.1, 0.2),
-                'best_500m' => $bestForDistance($swimWorkouts, 0.5, 0.2),
-                'best_1000m' => $bestForDistance($swimWorkouts, 1.0, 0.2),
+                'max_calories' => $swimMaxCaloriesWorkout ? [
+                    'workout_id' => $swimMaxCaloriesWorkout->id,
+                    'date' => optional($swimMaxCaloriesWorkout->date)->toDateString(),
+                    'distance_km' => (float) $swimMaxCaloriesWorkout->distance_km,
+                    'duration_seconds' => (int) $swimMaxCaloriesWorkout->duration_seconds,
+                    'calories' => (int) $swimMaxCaloriesWorkout->calories,
+                ] : null,
+            ],
+            'overall' => [
+                'max_calories' => $maxCaloriesWorkout ? [
+                    'workout_id' => $maxCaloriesWorkout->id,
+                    'date' => optional($maxCaloriesWorkout->date)->toDateString(),
+                    'type' => $maxCaloriesWorkout->type,
+                    'distance_km' => (float) $maxCaloriesWorkout->distance_km,
+                    'duration_seconds' => (int) $maxCaloriesWorkout->duration_seconds,
+                    'calories' => (int) $maxCaloriesWorkout->calories,
+                ] : null,
             ],
         ];
 

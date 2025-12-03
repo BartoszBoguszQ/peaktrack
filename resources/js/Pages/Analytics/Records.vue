@@ -72,7 +72,7 @@ function formatDistance(distanceKilometers) {
                             Running PRs
                         </div>
 
-                        <div class="grid gap-3 md:grid-cols-2">
+                        <div class="grid gap-3 md:grid-cols-3">
                             <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
                                     Longest run
@@ -114,69 +114,36 @@ function formatDistance(distanceKilometers) {
 
                             <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    400 m
+                                    Most calories on a run
                                 </div>
                                 <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.run?.best_400m?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.run?.best_400m?.distance_km) }} km
-                                    <span v-if="props.endurance.run?.best_400m?.date">
-                                        ({{ props.endurance.run.best_400m.date }})
+                                    <span v-if="props.endurance.run?.max_calories">
+                                        {{ props.endurance.run.max_calories.calories }} kcal
+                                    </span>
+                                    <span v-else>
+                                        -
                                     </span>
                                 </div>
-                            </div>
-
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    1 km
-                                </div>
-                                <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.run?.best_1k?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.run?.best_1k?.distance_km) }} km
-                                    <span v-if="props.endurance.run?.best_1k?.date">
-                                        ({{ props.endurance.run.best_1k.date }})
+                                    <span v-if="props.endurance.run?.max_calories">
+                                        {{ formatDistance(props.endurance.run.max_calories.distance_km) }} km
+                                        ·
+                                        {{ formatDuration(props.endurance.run.max_calories.duration_seconds) }}
+                                        <span v-if="props.endurance.run.max_calories.date">
+                                            ({{ props.endurance.run.max_calories.date }})
+                                        </span>
+                                        <span v-if="props.endurance.run.max_calories.workout_id">
+                                            ,
+                                            <Link
+                                                :href="route('workouts.show', props.endurance.run.max_calories.workout_id)"
+                                                class="text-blue-600 hover:underline"
+                                            >
+                                                view workout
+                                            </Link>
+                                        </span>
                                     </span>
-                                </div>
-                            </div>
-
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    1 mile
-                                </div>
-                                <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.run?.best_mile?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.run?.best_mile?.distance_km) }} km
-                                    <span v-if="props.endurance.run?.best_mile?.date">
-                                        ({{ props.endurance.run.best_mile.date }})
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    5 km and 10 km
-                                </div>
-                                <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-                                    5 km: {{ formatPace(props.endurance.run?.best_5k?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                    {{ formatDistance(props.endurance.run?.best_5k?.distance_km) }} km
-                                    <span v-if="props.endurance.run?.best_5k?.date">
-                                        ({{ props.endurance.run.best_5k.date }})
-                                    </span>
-                                </div>
-                                <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-                                    10 km: {{ formatPace(props.endurance.run?.best_10k?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.run?.best_10k?.distance_km) }} km
-                                    <span v-if="props.endurance.run?.best_10k?.date">
-                                        ({{ props.endurance.run.best_10k.date }})
+                                    <span v-else>
+                                        No running workouts with calories yet.
                                     </span>
                                 </div>
                             </div>
@@ -206,45 +173,36 @@ function formatDistance(distanceKilometers) {
 
                             <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    5 km
+                                    Most calories on a ride
                                 </div>
                                 <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.ride?.best_5k?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.ride?.best_5k?.distance_km) }} km
-                                    <span v-if="props.endurance.ride?.best_5k?.date">
-                                        ({{ props.endurance.ride.best_5k.date }})
+                                    <span v-if="props.endurance.ride?.max_calories">
+                                        {{ props.endurance.ride.max_calories.calories }} kcal
+                                    </span>
+                                    <span v-else>
+                                        -
                                     </span>
                                 </div>
-                            </div>
-
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    20 km
-                                </div>
-                                <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.ride?.best_20k?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.ride?.best_20k?.distance_km) }} km
-                                    <span v-if="props.endurance.ride?.best_20k?.date">
-                                        ({{ props.endurance.ride.best_20k.date }})
+                                    <span v-if="props.endurance.ride?.max_calories">
+                                        {{ formatDistance(props.endurance.ride.max_calories.distance_km) }} km
+                                        ·
+                                        {{ formatDuration(props.endurance.ride.max_calories.duration_seconds) }}
+                                        <span v-if="props.endurance.ride.max_calories.date">
+                                            ({{ props.endurance.ride.max_calories.date }})
+                                        </span>
+                                        <span v-if="props.endurance.ride.max_calories.workout_id">
+                                            ,
+                                            <Link
+                                                :href="route('workouts.show', props.endurance.ride.max_calories.workout_id)"
+                                                class="text-blue-600 hover:underline"
+                                            >
+                                                view workout
+                                            </Link>
+                                        </span>
                                     </span>
-                                </div>
-                            </div>
-
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    40 km
-                                </div>
-                                <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.ride?.best_40k?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.ride?.best_40k?.distance_km) }} km
-                                    <span v-if="props.endurance.ride?.best_40k?.date">
-                                        ({{ props.endurance.ride.best_40k.date }})
+                                    <span v-else>
+                                        No rides with calories yet.
                                     </span>
                                 </div>
                             </div>
@@ -276,45 +234,74 @@ function formatDistance(distanceKilometers) {
 
                             <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    100 m
+                                    Most calories on a swim
                                 </div>
                                 <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.swim?.best_100m?.pace_seconds_per_km) }}
+                                    <span v-if="props.endurance.swim?.max_calories">
+                                        {{ props.endurance.swim.max_calories.calories }} kcal
+                                    </span>
+                                    <span v-else>
+                                        -
+                                    </span>
                                 </div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.swim?.best_100m?.distance_km) }} km
-                                    <span v-if="props.endurance.swim?.best_100m?.date">
-                                        ({{ props.endurance.swim.best_100m.date }})
+                                    <span v-if="props.endurance.swim?.max_calories">
+                                        {{ formatDistance(props.endurance.swim.max_calories.distance_km) }} km
+                                        ·
+                                        {{ formatDuration(props.endurance.swim.max_calories.duration_seconds) }}
+                                        <span v-if="props.endurance.swim.max_calories.date">
+                                            ({{ props.endurance.swim.max_calories.date }})
+                                        </span>
+                                        <span v-if="props.endurance.swim.max_calories.workout_id">
+                                            ,
+                                            <Link
+                                                :href="route('workouts.show', props.endurance.swim.max_calories.workout_id)"
+                                                class="text-blue-600 hover:underline"
+                                            >
+                                                view workout
+                                            </Link>
+                                        </span>
+                                    </span>
+                                    <span v-else>
+                                        No swims with calories yet.
                                     </span>
                                 </div>
                             </div>
 
                             <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    500 m
+                                    Most calories (overall)
                                 </div>
                                 <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.swim?.best_500m?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.swim?.best_500m?.distance_km) }} km
-                                    <span v-if="props.endurance.swim?.best_500m?.date">
-                                        ({{ props.endurance.swim.best_500m.date }})
+                                    <span v-if="props.endurance.overall?.max_calories">
+                                        {{ props.endurance.overall.max_calories.calories }} kcal
+                                    </span>
+                                    <span v-else>
+                                        -
                                     </span>
                                 </div>
-                            </div>
-
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900 md:col-span-3">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    1000 m
-                                </div>
-                                <div class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ formatPace(props.endurance.swim?.best_1000m?.pace_seconds_per_km) }}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDistance(props.endurance.swim?.best_1000m?.distance_km) }} km
-                                    <span v-if="props.endurance.swim?.best_1000m?.date">
-                                        ({{ props.endurance.swim.best_1000m.date }})
+                                    <span v-if="props.endurance.overall?.max_calories">
+                                        {{ props.endurance.overall.max_calories.type }}
+                                        ·
+                                        {{ formatDistance(props.endurance.overall.max_calories.distance_km) }} km
+                                        ·
+                                        {{ formatDuration(props.endurance.overall.max_calories.duration_seconds) }}
+                                        <span v-if="props.endurance.overall.max_calories.date">
+                                            ({{ props.endurance.overall.max_calories.date }})
+                                        </span>
+                                        <span v-if="props.endurance.overall.max_calories.workout_id">
+                                            ,
+                                            <Link
+                                                :href="route('workouts.show', props.endurance.overall.max_calories.workout_id)"
+                                                class="text-blue-600 hover:underline"
+                                            >
+                                                view workout
+                                            </Link>
+                                        </span>
+                                    </span>
+                                    <span v-else>
+                                        No workouts with calories yet.
                                     </span>
                                 </div>
                             </div>
