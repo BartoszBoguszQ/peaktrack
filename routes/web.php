@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WorkoutController;
 use App\Http\Controllers\WorkoutExerciseStatsController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\WorkoutAnalyticsController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -16,7 +18,7 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', [WorkoutController::class, 'dashboard'])
+Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
@@ -36,8 +38,8 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::put('/workouts/{workout}', [WorkoutController::class,'update'])->name('workouts.update');
     Route::delete('/workouts/{workout}', [WorkoutController::class,'destroy'])->name('workouts.destroy');
 
-    Route::get('/analytics', [WorkoutController::class,'analytics'])->name('analytics.index');
-    Route::get('/records', [WorkoutController::class,'records'])->name('records.index');
+    Route::get('/analytics', [WorkoutAnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('/records', [WorkoutAnalyticsController::class, 'records'])->name('records.index');
 
     Route::get('/workouts/exercises/{workoutExercise}/stats', [WorkoutExerciseStatsController::class,'show'])->name('workouts.exercise.stats');
     Route::get('/strength-exercises', [WorkoutExerciseStatsController::class, 'index'])->name('strength.exercises.index');

@@ -2,46 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Exercise;
-use App\Services\ExerciseDbService;
-use Illuminate\Http\Request;
+use App\Http\Requests\ExerciseSearchRequest;
+use App\Http\Resources\ExerciseLookupResource;
+use App\Services\Exercise\ExerciseLookupService;
 
 class ExerciseLookupController extends Controller
 {
-    public function search(Request $request, ExerciseDbService $exerciseDbService)
+    public function search(ExerciseSearchRequest $request, ExerciseLookupService $exerciseLookupService)
     {
-        $queryString = trim((string) $request->string('query', ''));
-        if ($queryString === '') {
-            return response()->json(['data' => []]);
-        }
+        $queryString = (string) $request->input('query', '');
+        $limit = (int) $request->input('limit', 10);
 
-        $localResults = Exercise::query()
-            ->where('name', 'like', '%' . $queryString . '%')
-            ->orderBy('name')
-            ->limit(10)
-            ->get()
-            ->map(function (Exercise $exerciseModel) {
-                return [
-                    'source' => 'local',
-                    'id' => (string) $exerciseModel->id,
-                    'name' => $exerciseModel->name,
-                    'muscle_group' => $exerciseModel->muscle_group,
-                    'external_source' => null,
-                    'external_id' => null,
-                ];
-            })
-            ->all();
+        $results = $exerciseLookupService->search($queryString, $limit);
 
-        $externalResults = $exerciseDbService->search($queryString, 10);
-
-        $mergedResults = collect($localResults)
-            ->merge($externalResults)
-            ->unique(function (array $row) {
-                return mb_strtolower($row['name']) . '|' . ($row['source'] ?? '');
-            })
-            ->values()
-            ->all();
-
-        return response()->json(['data' => $mergedResults]);
+        return ExerciseLookupResource::collection(collect($results));
     }
 }
