@@ -20,10 +20,11 @@ class WorkoutController extends Controller
         $paginatedWorkouts = Workout::where('user_id', $authenticatedUser->id)
             ->orderByDesc('date')
             ->orderByDesc('id')
-            ->paginate(10);
+            ->paginate(10)
+            ->through(fn (Workout $workoutModel) => (new WorkoutResource($workoutModel))->toArray($request));
 
         return Inertia::render('Workouts/Index', [
-            'workouts' => WorkoutResource::collection($paginatedWorkouts),
+            'workouts' => $paginatedWorkouts,
         ]);
     }
 
@@ -49,7 +50,7 @@ class WorkoutController extends Controller
         $workout->load(['workoutExercises.sets']);
 
         return Inertia::render('Workouts/Show', [
-            'workout' => new WorkoutDetailResource($workout),
+            'workout' => (new WorkoutDetailResource($workout))->toArray($request),
         ]);
     }
 
@@ -61,7 +62,7 @@ class WorkoutController extends Controller
         $workout->load(['workoutExercises.sets']);
 
         return Inertia::render('Workouts/Edit', [
-            'workout' => new WorkoutDetailResource($workout),
+            'workout' => (new WorkoutDetailResource($workout))->toArray($request),
         ]);
     }
 

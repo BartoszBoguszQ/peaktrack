@@ -61,32 +61,32 @@ const totalReps = () =>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Date</div>
-                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.date }}</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.date }}</div>
                     </div>
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Type</div>
-                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.type }}</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.type }}</div>
                     </div>
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Time</div>
-                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.duration }}</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.duration }}</div>
                     </div>
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Distance [km]</div>
-                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ Number(props.workout.distance_km).toFixed(2) }}</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ Number(props.workout.attributes.distance_km).toFixed(2) }}</div>
                     </div>
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Calories</div>
-                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.calories }}</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.calories }}</div>
                     </div>
                 </div>
 
                 <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                     <div class="text-sm text-gray-600 dark:text-white">Notes</div>
-                    <div class="mt-1 text-gray-900 dark:text-white whitespace-pre-wrap" v-text="props.workout.notes || '-'"></div>
+                    <div class="mt-1 text-gray-900 dark:text-white whitespace-pre-wrap" v-text="props.workout.attributes.notes || '-'"></div>
                 </div>
 
-                <div v-if="props.workout.type === 'Strength' && props.workout.exercises?.length" class="rounded-2xl bg-white dark:bg-gray-800 p-4 space-y-3">
+                <div v-if="props.workout.attributes?.type === 'Strength' && props.workout.exercises?.length" class="rounded-2xl bg-white dark:bg-gray-800 p-4 space-y-3">
                     <div class="flex items-center justify-between">
                         <div class="text-lg font-semibold text-gray-900 dark:text-white">Exercises</div>
                         <div class="text-sm text-gray-600 dark:text-white">Total sets: {{ totalSets() }} • Total reps: {{ totalReps() }}</div>

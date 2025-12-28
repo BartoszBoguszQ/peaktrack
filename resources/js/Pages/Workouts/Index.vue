@@ -27,12 +27,12 @@ const props = defineProps({ workouts: Object })
                         <tbody>
                         <tr v-for="row in props.workouts.data" :key="row.id" class="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td class="px-4 py-3">
-                                <Link :href="`/workouts/${row.id}`" class="text-blue-600 hover:underline">{{ row.date }}</Link>
+                                <Link :href="`/workouts/${row.id}`" class="text-blue-600 hover:underline">{{ row.attributes.date }}</Link>
                             </td>
-                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.type }}</td>
-                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.duration }}</td>
-                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.distance_km }}</td>
-                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.calories }}</td>
+                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.attributes.type }}</td>
+                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.attributes.duration }}</td>
+                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.attributes.distance_km }}</td>
+                            <td class="px-4 py-3 text-gray-900 dark:text-white">{{ row.attributes.calories }}</td>
                         </tr>
                         </tbody>
                     </table>

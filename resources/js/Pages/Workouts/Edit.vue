@@ -9,13 +9,13 @@ const props = defineProps({
 })
 
 const form = useForm({
-    date: props.workout.date,
-    type: props.workout.type,
-    duration_seconds: props.workout.duration_seconds ?? 0,
-    distance_km: props.workout.distance_km ?? 0,
-    calories: props.workout.calories ?? 0,
-    notes: props.workout.notes ?? '',
-    exercises: props.workout.exercises ?? []
+    date: props.workout.attributes.date,
+    type: props.workout.attributes.type,
+    duration_seconds: props.workout.attributes.duration_seconds ?? 0,
+    distance_km: props.workout.attributes.distance_km ?? 0,
+    calories: props.workout.attributes.calories ?? 0,
+    notes: props.workout.attributes.notes ?? '',
+    exercises: props.workout.attributes.exercises ?? []
 })
 
 const isStrength = computed(() => form.type === 'Strength')
@@ -231,8 +231,11 @@ function submit() {
                                     v-model="form.type"
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                 >
-                                    <option value="Run">Run</option>
                                     <option value="Strength">Strength</option>
+                                    <option value="Run">Run</option>
+                                    <option value="Ride">Ride</option>
+                                    <option value="Swim">Swim</option>
+                                    <option value="Walk">Other</option>
                                 </select>
                             </div>
                         </div>
