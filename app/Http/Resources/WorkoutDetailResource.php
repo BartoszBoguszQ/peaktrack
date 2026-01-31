@@ -24,6 +24,7 @@ class WorkoutDetailResource extends JsonResource
                 'notes' => $this->resource->notes,
                 'created_at' => $this->formatDateTime($this->resource->created_at),
                 'updated_at' => $this->formatDateTime($this->resource->updated_at),
+                'exercises' => $this->buildExercisesAttribute(),
             ],
             'relationships' => [
                 'user' => $this->resource->relationLoaded('user') && $this->resource->user ? [
@@ -38,6 +39,48 @@ class WorkoutDetailResource extends JsonResource
                 'edit' => route('workouts.edit', ['workout' => $this->resource->id]),
             ],
         ];
+    }
+
+    protected function buildExercisesAttribute(): array
+    {
+        if ($this->resource->type !== 'Strength') {
+            return [];
+        }
+
+        $exercises = $this->resource->relationLoaded('workoutExercises')
+            ? $this->resource->workoutExercises
+            : collect();
+
+        return $exercises
+            ->map(function ($exerciseModel) {
+                $sets = $exerciseModel->relationLoaded('sets')
+                    ? $exerciseModel->sets
+                    : collect();
+
+                return [
+                    'id' => $exerciseModel->id,
+                    'exercise_id' => $exerciseModel->exercise_id,
+                    'external_source' => $exerciseModel->external_source,
+                    'external_id' => $exerciseModel->external_id,
+                    'name' => $exerciseModel->name,
+                    'order_no' => $exerciseModel->order_no,
+                    'catalog_name' => null,
+                    'sets' => $sets
+                        ->map(function ($setModel) {
+                            return [
+                                'set_no' => $setModel->set_no,
+                                'reps' => $setModel->reps,
+                                'weight_kg' => $setModel->weight_kg,
+                                'rir' => $setModel->rir,
+                                'rest_seconds' => $setModel->rest_seconds,
+                            ];
+                        })
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     protected function buildExercisesRelationship(): array

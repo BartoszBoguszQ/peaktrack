@@ -19,6 +19,8 @@ class Workout extends Model
 
     protected $casts = [
         'date' => 'date',
+        'duration_seconds' => 'integer',
+        'calories' => 'integer',
         'distance_km' => 'decimal:2',
     ];
 

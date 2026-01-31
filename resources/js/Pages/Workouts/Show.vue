@@ -1,23 +1,72 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, Link } from '@inertiajs/vue3'
+import { computed } from 'vue'
 
-const props = defineProps({ workout: { type:Object, required:true } })
-const totalSets = () =>
-    (props.workout.exercises || []).reduce(
-        (acc, exercise) => acc + ((exercise.sets || []).length),
+const props = defineProps({ workout: { type: Object, required: true } })
+
+const isStrength = computed(() => props.workout.attributes?.type === 'Strength')
+
+const workoutExercises = computed(() => {
+    const attributeExercises = props.workout.attributes?.exercises
+    if (Array.isArray(attributeExercises)) {
+        return attributeExercises
+    }
+
+    const relationshipExercises = props.workout.relationships?.exercises
+    if (!Array.isArray(relationshipExercises)) {
+        return []
+    }
+
+    return relationshipExercises.map((exerciseItem) => {
+        const exerciseAttributes = exerciseItem?.attributes ?? {}
+        const setsRelationship = exerciseItem?.relationships?.sets
+        const setsArray = Array.isArray(setsRelationship) ? setsRelationship : []
+
+        return {
+            id: exerciseItem?.id ?? null,
+            exercise_id: exerciseAttributes.exercise_id ?? null,
+            external_source: exerciseAttributes.external_source ?? null,
+            external_id: exerciseAttributes.external_id ?? null,
+            name: exerciseAttributes.name ?? '',
+            order_no: exerciseAttributes.order_no ?? null,
+            catalog_name: null,
+            sets: setsArray.map((setItem) => {
+                const setAttributes = setItem?.attributes ?? {}
+                return {
+                    set_no: setAttributes.set_no ?? null,
+                    reps: setAttributes.reps ?? null,
+                    weight_kg: setAttributes.weight_kg ?? null,
+                    rir: setAttributes.rir ?? null,
+                    rest_seconds: setAttributes.rest_seconds ?? null
+                }
+            })
+        }
+    })
+})
+
+const totalExercises = computed(() => workoutExercises.value.length)
+
+const totalSets = computed(() =>
+    workoutExercises.value.reduce((acc, exercise) => acc + ((exercise.sets || []).length), 0)
+)
+
+const totalReps = computed(() =>
+    workoutExercises.value.reduce(
+        (acc, exercise) => acc + (exercise.sets || []).reduce((inner, set) => inner + (Number(set.reps) || 0), 0),
         0
     )
+)
 
-const totalReps = () =>
-    (props.workout.exercises || []).reduce(
-        (acc, exercise) =>
-            acc + (exercise.sets || []).reduce(
-                (inner, set) => inner + (set.reps || 0),
-                0
-            ),
-        0
-    )
+const totalVolumeKg = computed(() =>
+    workoutExercises.value.reduce((acc, exercise) => {
+        return acc + (exercise.sets || []).reduce((inner, set) => {
+            const reps = Number(set.reps) || 0
+            const weight = Number(set.weight_kg) || 0
+            return inner + reps * weight
+        }, 0)
+    }, 0)
+)
 </script>
 
 <template>
@@ -63,21 +112,40 @@ const totalReps = () =>
                         <div class="text-sm text-gray-600 dark:text-white">Date</div>
                         <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.date }}</div>
                     </div>
+
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Type</div>
                         <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.type }}</div>
                     </div>
+
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Time</div>
                         <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.duration }}</div>
                     </div>
-                    <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
+
+                    <div v-if="!isStrength" class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Distance [km]</div>
                         <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ Number(props.workout.attributes.distance_km).toFixed(2) }}</div>
                     </div>
+
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-4">
                         <div class="text-sm text-gray-600 dark:text-white">Calories</div>
                         <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ props.workout.attributes.calories }}</div>
+                    </div>
+
+                    <div v-if="isStrength" class="rounded-2xl bg-white dark:bg-gray-800 p-4">
+                        <div class="text-sm text-gray-600 dark:text-white">Exercises</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ totalExercises }}</div>
+                    </div>
+
+                    <div v-if="isStrength" class="rounded-2xl bg-white dark:bg-gray-800 p-4">
+                        <div class="text-sm text-gray-600 dark:text-white">Sets / Reps</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ totalSets }} / {{ totalReps }}</div>
+                    </div>
+
+                    <div v-if="isStrength" class="rounded-2xl bg-white dark:bg-gray-800 p-4">
+                        <div class="text-sm text-gray-600 dark:text-white">Volume [kg]</div>
+                        <div class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ totalVolumeKg.toFixed(1) }}</div>
                     </div>
                 </div>
 
@@ -86,24 +154,31 @@ const totalReps = () =>
                     <div class="mt-1 text-gray-900 dark:text-white whitespace-pre-wrap" v-text="props.workout.attributes.notes || '-'"></div>
                 </div>
 
-                <div v-if="props.workout.attributes?.type === 'Strength' && props.workout.exercises?.length" class="rounded-2xl bg-white dark:bg-gray-800 p-4 space-y-3">
+                <div v-if="isStrength && workoutExercises.length" class="rounded-2xl bg-white dark:bg-gray-800 p-4 space-y-3">
                     <div class="flex items-center justify-between">
                         <div class="text-lg font-semibold text-gray-900 dark:text-white">Exercises</div>
-                        <div class="text-sm text-gray-600 dark:text-white">Total sets: {{ totalSets() }} • Total reps: {{ totalReps() }}</div>
+                        <div class="text-sm text-gray-600 dark:text-white">
+                            Sets: {{ totalSets }} • Reps: {{ totalReps }} • Volume: {{ totalVolumeKg.toFixed(1) }} kg
+                        </div>
                     </div>
 
-                    <div v-for="exercise in props.workout.exercises" :key="exercise.id" class="border-t border-gray-100 dark:border-gray-700 pt-3">
+                    <div v-for="exercise in workoutExercises" :key="exercise.id" class="border-t border-gray-100 dark:border-gray-700 pt-3">
                         <div class="flex items-center justify-between">
                             <div class="font-medium text-gray-900 dark:text-white">
                                 <Link
+                                    v-if="exercise.id"
                                     :href="route('workouts.exercise.stats', exercise.id)"
                                     class="text-blue-600 hover:underline"
                                 >
                                     {{ exercise.order_no }}. {{ exercise.name }}
                                 </Link>
+                                <span v-else>
+                                    {{ exercise.order_no }}. {{ exercise.name }}
+                                </span>
                             </div>
                             <div class="text-sm text-gray-600 dark:text-white" v-if="exercise.catalog_name">Catalog: {{ exercise.catalog_name }}</div>
                         </div>
+
                         <div class="overflow-x-auto mt-2">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-white">
