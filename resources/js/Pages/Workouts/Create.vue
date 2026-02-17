@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import axios from 'axios'
 
 const form = useForm({
@@ -71,18 +71,19 @@ watch([durationHours, durationMinutes, durationSecondsPart], () => {
     syncDurationFromParts()
 })
 
-const exerciseSearchQuery = ref('')
-const exerciseSearchResults = ref([])
-const exerciseSearchLoading = ref(false)
-const exerciseSearchError = ref('')
+function newUid() {
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
 
-function addExercise() {
-    form.exercises.push({
+function makeEmptyExercise(orderNo, initialName = '') {
+    return {
+        uid: newUid(),
         exercise_id: null,
         external_source: null,
         external_id: null,
-        name: '',
-        order_no: form.exercises.length + 1,
+        picked_name: initialName || '',
+        display_name: initialName || '',
+        order_no: orderNo,
         catalog_name: null,
         sets: [
             {
@@ -93,10 +94,92 @@ function addExercise() {
                 rest_seconds: null
             }
         ]
-    })
+    }
+}
+
+const exerciseNameRefs = ref({})
+
+function setExerciseNameRef(uid) {
+    return (el) => {
+        if (el) {
+            exerciseNameRefs.value[uid] = el
+        }
+    }
+}
+
+const exerciseSearchQuery = ref('')
+const exerciseSearchResults = ref([])
+const exerciseSearchLoading = ref(false)
+const exerciseSearchError = ref('')
+
+const isSearchOpen = ref(false)
+const searchBoxRef = ref(null)
+
+let searchDebounceTimer = null
+
+function closeSearch() {
+    isSearchOpen.value = false
+    exerciseSearchResults.value = []
+    exerciseSearchError.value = ''
+}
+
+function onSearchKeydown(e) {
+    if (e.key === 'Escape') {
+        closeSearch()
+    }
+}
+
+function onDocumentClick(e) {
+    const el = searchBoxRef.value
+    if (!el) return
+    if (!el.contains(e.target)) {
+        closeSearch()
+    }
+}
+
+window.addEventListener('click', onDocumentClick)
+
+onBeforeUnmount(() => {
+    window.removeEventListener('click', onDocumentClick)
+    clearTimeout(searchDebounceTimer)
+})
+
+watch(exerciseSearchQuery, (value) => {
+    const query = String(value || '').trim()
+    clearTimeout(searchDebounceTimer)
+
+    if (query.length < 2) {
+        closeSearch()
+        return
+    }
+
+    isSearchOpen.value = true
+    searchDebounceTimer = setTimeout(() => {
+        searchExercises()
+    }, 300)
+})
+
+async function focusExerciseName(uid) {
+    await nextTick()
+    const el = exerciseNameRefs.value[uid]
+    if (el && typeof el.focus === 'function') {
+        el.focus()
+        if (typeof el.select === 'function') el.select()
+    }
+}
+
+function addExercise() {
+    const newExercise = makeEmptyExercise(form.exercises.length + 1, '')
+    form.exercises.push(newExercise)
+    focusExerciseName(newExercise.uid)
 }
 
 function removeExercise(index) {
+    const removed = form.exercises[index]
+    if (removed?.uid && exerciseNameRefs.value[removed.uid]) {
+        delete exerciseNameRefs.value[removed.uid]
+    }
+
     form.exercises.splice(index, 1)
     form.exercises.forEach((ex, i) => {
         ex.order_no = i + 1
@@ -129,13 +212,19 @@ function removeSet(exerciseIndex, setIndex) {
 async function searchExercises() {
     exerciseSearchError.value = ''
     exerciseSearchResults.value = []
-    if (!exerciseSearchQuery.value || exerciseSearchQuery.value.length < 2) {
+
+    const query = String(exerciseSearchQuery.value || '').trim()
+    if (query.length < 2) {
+        closeSearch()
         return
     }
+
+    isSearchOpen.value = true
     exerciseSearchLoading.value = true
+
     try {
         const response = await axios.get('/api/exercises/search', {
-            params: { query: exerciseSearchQuery.value }
+            params: { query }
         })
 
         const raw = response.data
@@ -161,14 +250,11 @@ async function searchExercises() {
     }
 }
 
-function pickExercise(exerciseIndex, picked) {
-    const exercise = form.exercises[exerciseIndex]
-    if (!exercise || !picked) return
-
+function applyPickedToExercise(exercise, picked) {
     const source = picked.source ?? picked?.attributes?.source ?? null
 
     const pickedId = picked.id ?? null
-    const name = picked.name ?? picked?.attributes?.name ?? picked.title ?? picked?.attributes?.title ?? ''
+    const pickedName = picked.name ?? picked?.attributes?.name ?? picked.title ?? picked?.attributes?.title ?? ''
     const muscleGroup = picked.muscle_group ?? picked?.attributes?.muscle_group ?? null
     const externalSource = picked.external_source ?? picked?.attributes?.external_source ?? null
     const externalId = picked.external_id ?? picked?.attributes?.external_id ?? null
@@ -185,8 +271,23 @@ function pickExercise(exerciseIndex, picked) {
         exercise.external_id = externalId || pickedId
     }
 
-    exercise.name = name || exercise.name
+    exercise.picked_name = pickedName || exercise.picked_name || ''
     exercise.catalog_name = muscleGroup || exercise.catalog_name
+
+    if (!String(exercise.display_name || '').trim()) {
+        exercise.display_name = exercise.picked_name
+    }
+}
+
+function addPickedExercise(picked) {
+    const newExercise = makeEmptyExercise(form.exercises.length + 1, '')
+    form.exercises.push(newExercise)
+    applyPickedToExercise(newExercise, picked)
+
+    closeSearch()
+    exerciseSearchQuery.value = ''
+
+    focusExerciseName(newExercise.uid)
 }
 
 function submit() {
@@ -206,7 +307,7 @@ function submit() {
                     exercise_id: exerciseItem.exercise_id,
                     external_source: exerciseItem.external_source,
                     external_id: exerciseItem.external_id,
-                    name: exerciseItem.name,
+                    name: String(exerciseItem.display_name || exerciseItem.picked_name || '').trim(),
                     order_no: exerciseIndex + 1,
                     sets: (exerciseItem.sets || []).map((setItem, setIndex) => ({
                         set_no: setItem.set_no ?? setIndex + 1,
@@ -386,29 +487,35 @@ function submit() {
                         </div>
 
                         <div class="grid grid-cols-1 gap-4">
-                            <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Search exercise
-                                </label>
+                            <div ref="searchBoxRef" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                        Search exercise
+                                    </label>
+                                    <button
+                                        v-if="isSearchOpen"
+                                        type="button"
+                                        @click="closeSearch"
+                                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+
                                 <div class="flex gap-2">
                                     <input
                                         v-model="exerciseSearchQuery"
+                                        @keydown="onSearchKeydown"
                                         type="text"
                                         placeholder="Type to search..."
                                         class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                     />
-                                    <button
-                                        type="button"
-                                        @click="searchExercises"
-                                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                                    >
-                                        Search
-                                    </button>
                                 </div>
-                                <div v-if="exerciseSearchLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
-                                <div v-if="exerciseSearchError" class="text-sm text-red-600">{{ exerciseSearchError }}</div>
 
-                                <div v-if="exerciseSearchResults.length" class="mt-2 space-y-2">
+                                <div v-if="exerciseSearchLoading && isSearchOpen" class="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
+                                <div v-if="exerciseSearchError && isSearchOpen" class="text-sm text-red-600">{{ exerciseSearchError }}</div>
+
+                                <div v-if="isSearchOpen && exerciseSearchResults.length" class="mt-2 space-y-2">
                                     <div
                                         v-for="result in exerciseSearchResults"
                                         :key="`${result.source || result.external_source || 'x'}-${result.id}`"
@@ -423,7 +530,7 @@ function submit() {
                                         <button
                                             type="button"
                                             class="rounded-lg bg-gray-900 px-3 py-2 text-xs font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-                                            @click="() => { if (!form.exercises.length) addExercise(); pickExercise(form.exercises.length - 1, result) }"
+                                            @click="addPickedExercise(result)"
                                         >
                                             Use
                                         </button>
@@ -431,13 +538,20 @@ function submit() {
                                 </div>
                             </div>
 
-                            <div v-for="(exercise, exerciseIndex) in form.exercises" :key="exerciseIndex" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                            <div
+                                v-for="(exercise, exerciseIndex) in form.exercises"
+                                :key="exercise.uid"
+                                class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4"
+                            >
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                            {{ exercise.order_no }}. {{ exercise.name || 'Exercise' }}
+                                            {{ exercise.order_no }}. {{ (exercise.display_name || exercise.picked_name) || 'Exercise' }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                            <span v-if="exercise.picked_name && exercise.display_name && exercise.picked_name !== exercise.display_name">
+                                                Catalog: {{ exercise.picked_name }} ·
+                                            </span>
                                             {{ exercise.catalog_name || exercise.external_source || '-' }}
                                         </div>
                                     </div>
@@ -452,10 +566,12 @@ function submit() {
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Name</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your name</label>
                                         <input
-                                            v-model="exercise.name"
+                                            :ref="setExerciseNameRef(exercise.uid)"
+                                            v-model="exercise.display_name"
                                             type="text"
+                                            placeholder="Exercise name"
                                             class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                         />
                                     </div>

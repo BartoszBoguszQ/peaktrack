@@ -1,11 +1,12 @@
 <script setup>
-import { ref, watchEffect } from 'vue'
+import { ref, watch, watchEffect } from 'vue'
 import ApplicationLogo from '@/Components/ApplicationLogo.vue'
 import Dropdown from '@/Components/Dropdown.vue'
 import DropdownLink from '@/Components/DropdownLink.vue'
 import NavLink from '@/Components/NavLink.vue'
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
+import { useToast } from 'vue-toastification'
 
 const showingNavigationDropdown = ref(false)
 
@@ -14,6 +15,27 @@ watchEffect(() => {
     document.documentElement.classList.toggle('dark', isDark.value)
     localStorage.setItem('isDark', isDark.value ? '1' : '0')
 })
+
+const page = usePage()
+const toast = useToast()
+
+watch(
+    () => page.props.flash,
+    (flash) => {
+        if (flash?.success) toast.success(flash.success)
+        if (flash?.error) toast.error(flash.error)
+    },
+    { deep: true }
+)
+
+watch(
+    () => page.props.errors,
+    (errors) => {
+        const firstError = errors ? Object.values(errors)[0] : null
+        if (firstError) toast.error(firstError)
+    },
+    { deep: true }
+)
 </script>
 
 <template>
