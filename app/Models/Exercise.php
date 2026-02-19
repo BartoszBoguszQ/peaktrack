@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Exercise extends Model
 {
     protected $fillable = [
-        'name', 'muscle_group', 'external_source', 'external_id'
+        'name',
+        'muscle_group',
+        'external_source',
+        'external_id'
     ];
 }

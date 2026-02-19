@@ -7,7 +7,7 @@ use App\Models\Workout;
 use App\Models\WorkoutExercise;
 use Illuminate\Support\Facades\DB;
 
-class WorkoutCrudService
+class WorkoutService
 {
     public function createWorkout(User $user, array $validatedData): Workout
     {

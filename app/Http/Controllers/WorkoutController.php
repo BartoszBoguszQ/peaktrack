@@ -6,7 +6,7 @@ use App\Http\Requests\StoreWorkoutRequest;
 use App\Http\Resources\WorkoutDetailResource;
 use App\Http\Resources\WorkoutResource;
 use App\Models\Workout;
-use App\Services\Workout\WorkoutCrudService;
+use App\Services\Workout\WorkoutService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -80,9 +80,9 @@ class WorkoutController extends Controller
         return Inertia::render('Workouts/Create');
     }
 
-    public function store(StoreWorkoutRequest $request, WorkoutCrudService $workoutCrudService)
+    public function store(StoreWorkoutRequest $request, WorkoutService $workoutService)
     {
-        $workout = $workoutCrudService->createWorkout($request->user(), $request->validated());
+        $workout = $workoutService->createWorkout($request->user(), $request->validated());
 
         return redirect()
             ->route('workouts.show', $workout)
@@ -113,12 +113,12 @@ class WorkoutController extends Controller
         ]);
     }
 
-    public function update(StoreWorkoutRequest $request, Workout $workout, WorkoutCrudService $workoutCrudService)
+    public function update(StoreWorkoutRequest $request, Workout $workout, WorkoutService $workoutService)
     {
         $authenticatedUser = $request->user();
         abort_unless($workout->user_id === $authenticatedUser->id, 403);
 
-        $updatedWorkout = $workoutCrudService->updateWorkout($workout, $authenticatedUser, $request->validated());
+        $updatedWorkout = $workoutService->updateWorkout($workout, $authenticatedUser, $request->validated());
 
         return redirect()
             ->route('workouts.show', $updatedWorkout)
