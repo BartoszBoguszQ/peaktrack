@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, useForm, Link } from '@inertiajs/vue3'
-import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
+import {Head, useForm, Link} from '@inertiajs/vue3'
+import {ref, computed, watch, onBeforeUnmount, nextTick} from 'vue'
 import axios from 'axios'
 
 const form = useForm({
@@ -224,7 +224,7 @@ async function searchExercises() {
 
     try {
         const response = await axios.get('/api/exercises/search', {
-            params: { query }
+            params: {query}
         })
 
         const raw = response.data
@@ -320,16 +320,17 @@ function submit() {
                 : []
     }
 
-    form.post(route('workouts.store'), {
-        data: payload,
-        preserveScroll: true
-    })
+    form.transform(() => payload)
+        .post(route('workouts.store'), {
+            preserveScroll: true,
+            onFinish: () => form.transform(data => data)
+        })
 }
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <Head title="Create Workout" />
+        <Head title="Create Workout"/>
 
         <div class="py-6">
             <div class="max-w-4xl mx-auto px-4 space-y-6">
@@ -358,7 +359,10 @@ function submit() {
                                     type="date"
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                 />
-                                <div v-if="form.errors.date" class="mt-1 text-sm text-red-600">{{ form.errors.date }}</div>
+                                <div v-if="form.errors.date" class="mt-1 text-sm text-red-600">{{
+                                        form.errors.date
+                                    }}
+                                </div>
                             </div>
 
                             <div>
@@ -374,7 +378,10 @@ function submit() {
                                     <option value="Swim">Swim</option>
                                     <option value="Strength">Strength</option>
                                 </select>
-                                <div v-if="form.errors.type" class="mt-1 text-sm text-red-600">{{ form.errors.type }}</div>
+                                <div v-if="form.errors.type" class="mt-1 text-sm text-red-600">{{
+                                        form.errors.type
+                                    }}
+                                </div>
                             </div>
                         </div>
 
@@ -439,7 +446,9 @@ function submit() {
                                     inputmode="decimal"
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                 />
-                                <div v-if="form.errors.distance_km" class="mt-1 text-sm text-red-600">{{ form.errors.distance_km }}</div>
+                                <div v-if="form.errors.distance_km" class="mt-1 text-sm text-red-600">
+                                    {{ form.errors.distance_km }}
+                                </div>
                             </div>
 
                             <div>
@@ -454,7 +463,9 @@ function submit() {
                                     inputmode="numeric"
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                 />
-                                <div v-if="form.errors.calories" class="mt-1 text-sm text-red-600">{{ form.errors.calories }}</div>
+                                <div v-if="form.errors.calories" class="mt-1 text-sm text-red-600">
+                                    {{ form.errors.calories }}
+                                </div>
                             </div>
                         </div>
 
@@ -467,7 +478,10 @@ function submit() {
                                 rows="3"
                                 class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                             ></textarea>
-                            <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">{{ form.errors.notes }}</div>
+                            <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">{{
+                                    form.errors.notes
+                                }}
+                            </div>
                         </div>
                     </div>
 
@@ -475,7 +489,9 @@ function submit() {
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <div class="text-lg font-semibold text-gray-900 dark:text-white">Exercises</div>
-                                <div class="text-sm text-gray-500 dark:text-gray-400">Add exercises and sets for your strength workout.</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">Add exercises and sets for your
+                                    strength workout.
+                                </div>
                             </div>
                             <button
                                 type="button"
@@ -487,7 +503,8 @@ function submit() {
                         </div>
 
                         <div class="grid grid-cols-1 gap-4">
-                            <div ref="searchBoxRef" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                            <div ref="searchBoxRef"
+                                 class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
                                 <div class="flex items-center justify-between gap-3">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
                                         Search exercise
@@ -512,8 +529,12 @@ function submit() {
                                     />
                                 </div>
 
-                                <div v-if="exerciseSearchLoading && isSearchOpen" class="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
-                                <div v-if="exerciseSearchError && isSearchOpen" class="text-sm text-red-600">{{ exerciseSearchError }}</div>
+                                <div v-if="exerciseSearchLoading && isSearchOpen"
+                                     class="text-sm text-gray-500 dark:text-gray-400">Loading...
+                                </div>
+                                <div v-if="exerciseSearchError && isSearchOpen" class="text-sm text-red-600">
+                                    {{ exerciseSearchError }}
+                                </div>
 
                                 <div v-if="isSearchOpen && exerciseSearchResults.length" class="mt-2 space-y-2">
                                     <div
@@ -522,9 +543,13 @@ function submit() {
                                         class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-3"
                                     >
                                         <div class="min-w-0">
-                                            <div class="font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
+                                            <div class="font-medium text-gray-900 dark:text-white truncate">
+                                                {{ result.name }}
+                                            </div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                {{ result.muscle_group || result.external_source || result.source || '-' }}
+                                                {{
+                                                    result.muscle_group || result.external_source || result.source || '-'
+                                                }}
                                             </div>
                                         </div>
                                         <button
@@ -546,10 +571,12 @@ function submit() {
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                            {{ exercise.order_no }}. {{ (exercise.display_name || exercise.picked_name) || 'Exercise' }}
+                                            {{ exercise.order_no }}.
+                                            {{ (exercise.display_name || exercise.picked_name) || 'Exercise' }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                            <span v-if="exercise.picked_name && exercise.display_name && exercise.picked_name !== exercise.display_name">
+                                            <span
+                                                v-if="exercise.picked_name && exercise.display_name && exercise.picked_name !== exercise.display_name">
                                                 Catalog: {{ exercise.picked_name }} ·
                                             </span>
                                             {{ exercise.catalog_name || exercise.external_source || '-' }}
@@ -566,7 +593,8 @@ function submit() {
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your name</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your
+                                            name</label>
                                         <input
                                             :ref="setExerciseNameRef(exercise.uid)"
                                             v-model="exercise.display_name"
@@ -576,7 +604,8 @@ function submit() {
                                         />
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Order</label>
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-200">Order</label>
                                         <input
                                             v-model.number="exercise.order_no"
                                             type="number"
@@ -613,8 +642,12 @@ function submit() {
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            <tr v-for="(setItem, setIndex) in exercise.sets" :key="setIndex" class="border-t border-gray-100 dark:border-gray-700">
-                                                <td class="px-3 py-2 text-gray-900 dark:text-white">{{ setItem.set_no }}</td>
+                                            <tr v-for="(setItem, setIndex) in exercise.sets" :key="setIndex"
+                                                class="border-t border-gray-100 dark:border-gray-700">
+                                                <td class="px-3 py-2 text-gray-900 dark:text-white">{{
+                                                        setItem.set_no
+                                                    }}
+                                                </td>
                                                 <td class="px-3 py-2">
                                                     <input
                                                         v-model.number="setItem.reps"
@@ -669,7 +702,8 @@ function submit() {
                                         </table>
                                     </div>
 
-                                    <div v-if="form.errors[`exercises.${exerciseIndex}.exercise_id`]" class="text-sm text-red-600">
+                                    <div v-if="form.errors[`exercises.${exerciseIndex}.exercise_id`]"
+                                         class="text-sm text-red-600">
                                         {{ form.errors[`exercises.${exerciseIndex}.exercise_id`] }}
                                     </div>
                                 </div>

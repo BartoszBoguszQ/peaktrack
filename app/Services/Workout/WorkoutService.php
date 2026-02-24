@@ -2,6 +2,7 @@
 
 namespace App\Services\Workout;
 
+use App\Models\Exercise;
 use App\Models\User;
 use App\Models\Workout;
 use App\Models\WorkoutExercise;
@@ -24,11 +25,22 @@ class WorkoutService
 
             if (($validatedData['type'] ?? null) === 'Strength') {
                 foreach ($validatedData['exercises'] ?? [] as $exerciseIndex => $exercisePayload) {
+                    $exerciseName = trim((string) ($exercisePayload['name'] ?? ''));
+                    $exerciseId = $exercisePayload['exercise_id'] ?? null;
+
+                    if (empty($exerciseId) && $exerciseName !== '') {
+                        $exerciseModel = Exercise::firstOrCreate([
+                            'name' => $exerciseName,
+                        ]);
+
+                        $exerciseId = $exerciseModel->id;
+                    }
+
                     $workoutExercise = $workout->workoutExercises()->create([
-                        'exercise_id' => $exercisePayload['exercise_id'] ?? null,
+                        'exercise_id' => $exerciseId ?: null,
                         'external_source' => $exercisePayload['external_source'] ?? null,
                         'external_id' => $exercisePayload['external_id'] ?? null,
-                        'name' => $exercisePayload['name'] ?? '',
+                        'name' => $exerciseName,
                         'order_no' => $exercisePayload['order_no'] ?? $exerciseIndex + 1,
                     ]);
 
@@ -68,11 +80,22 @@ class WorkoutService
 
             if (($validatedData['type'] ?? null) === 'Strength') {
                 foreach ($validatedData['exercises'] ?? [] as $exerciseIndex => $exercisePayload) {
+                    $exerciseName = trim((string) ($exercisePayload['name'] ?? ''));
+                    $exerciseId = $exercisePayload['exercise_id'] ?? null;
+
+                    if (empty($exerciseId) && $exerciseName !== '') {
+                        $exerciseModel = Exercise::firstOrCreate([
+                            'name' => $exerciseName,
+                        ]);
+
+                        $exerciseId = $exerciseModel->id;
+                    }
+
                     $workoutExercise = $workout->workoutExercises()->create([
-                        'exercise_id' => $exercisePayload['exercise_id'] ?? null,
+                        'exercise_id' => $exerciseId ?: null,
                         'external_source' => $exercisePayload['external_source'] ?? null,
                         'external_id' => $exercisePayload['external_id'] ?? null,
-                        'name' => $exercisePayload['name'] ?? '',
+                        'name' => $exerciseName,
                         'order_no' => $exercisePayload['order_no'] ?? $exerciseIndex + 1,
                     ]);
 
