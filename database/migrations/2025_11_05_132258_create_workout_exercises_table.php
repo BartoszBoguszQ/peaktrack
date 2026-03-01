@@ -12,14 +12,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('workout_id')->constrained()->cascadeOnDelete();
             $table->foreignId('exercise_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('external_source', 50)->nullable();
-            $table->string('external_id', 80)->nullable();
+            $table->string('source', 20)->default('manual');
+            $table->string('external_id', 120)->nullable();
             $table->string('name', 120);
             $table->unsignedInteger('order_no')->default(1);
             $table->timestamps();
-
             $table->index(['workout_id', 'order_no']);
-            $table->index(['external_source', 'external_id'], 'workout_exercises_external_lookup_idx');
+            $table->index(['source', 'external_id'], 'workout_exercises_source_external_lookup_idx');
         });
     }
 

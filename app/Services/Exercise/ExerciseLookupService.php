@@ -3,6 +3,7 @@
 namespace App\Services\Exercise;
 
 use App\Models\Exercise;
+use App\Models\User;
 use App\Services\ExerciseDbService;
 use Illuminate\Support\Collection;
 
@@ -15,7 +16,7 @@ class ExerciseLookupService
         $this->exerciseDbService = $exerciseDbService;
     }
 
-    public function search(string $queryString, int $limit = 10): array
+    public function search(User $user, string $queryString, int $limit = 10): array
     {
         $trimmedQuery = trim($queryString);
         if ($trimmedQuery === '') {
@@ -24,31 +25,28 @@ class ExerciseLookupService
 
         $normalizedLimit = $limit > 0 ? min($limit, 50) : 10;
 
-        $localResults = $this->searchLocal($trimmedQuery, $normalizedLimit);
+        $localResults = $this->searchLocal($user, $trimmedQuery, $normalizedLimit);
         $externalResults = $this->searchExternal($trimmedQuery, $normalizedLimit);
 
         return $this->mergeResults($localResults, $externalResults);
     }
 
-    protected function searchLocal(string $queryString, int $limit): array
+    protected function searchLocal(User $user, string $queryString, int $limit): array
     {
         return Exercise::query()
+            ->where('user_id', $user->id)
+            ->where('source', 'manual')
             ->where('name', 'like', '%' . $queryString . '%')
             ->orderBy('name')
             ->limit($limit)
-            ->get()
+            ->get(['id', 'name'])
             ->map(function (Exercise $exerciseModel) {
                 return [
-                    'source' => 'local',
+                    'lookup_source' => 'local',
                     'id' => (string) $exerciseModel->id,
                     'name' => $exerciseModel->name,
-                    'muscle_group' => $exerciseModel->muscle_group,
-                    'external_source' => null,
+                    'source' => 'manual',
                     'external_id' => null,
-                    'body_parts' => [],
-                    'equipments' => [],
-                    'image_url' => null,
-                    'video_url' => null,
                 ];
             })
             ->all();
@@ -59,17 +57,11 @@ class ExerciseLookupService
         $results = $this->exerciseDbService->search($queryString, $limit);
 
         if ($results instanceof Collection) {
-            return $results->map(function (array $row) {
-                return $this->normalizeExternalRow($row);
-            })->all();
+            return $results->map(fn (array $row) => $this->normalizeExternalRow($row))->all();
         }
 
         if (is_array($results)) {
-            return collect($results)
-                ->map(function (array $row) {
-                    return $this->normalizeExternalRow($row);
-                })
-                ->all();
+            return collect($results)->map(fn (array $row) => $this->normalizeExternalRow($row))->all();
         }
 
         return [];
@@ -77,17 +69,14 @@ class ExerciseLookupService
 
     protected function normalizeExternalRow(array $row): array
     {
+        $externalId = $row['external_id'] ?? ($row['id'] ?? null);
+
         return [
-            'source' => $row['source'] ?? 'external',
+            'lookup_source' => 'api',
             'id' => $row['id'] ?? null,
             'name' => $row['name'] ?? '',
-            'muscle_group' => $row['muscle_group'] ?? null,
-            'external_source' => $row['external_source'] ?? ($row['source'] ?? 'external'),
-            'external_id' => $row['external_id'] ?? ($row['id'] ?? null),
-            'body_parts' => $row['body_parts'] ?? [],
-            'equipments' => $row['equipments'] ?? [],
-            'image_url' => $row['image_url'] ?? null,
-            'video_url' => $row['video_url'] ?? null,
+            'source' => 'api',
+            'external_id' => $externalId !== null ? (string) $externalId : null,
         ];
     }
 
@@ -97,10 +86,10 @@ class ExerciseLookupService
             ->merge($externalResults)
             ->unique(function (array $row) {
                 $nameKey = mb_strtolower((string) ($row['name'] ?? ''));
-                $sourceKey = (string) ($row['source'] ?? '');
+                $lookupKey = (string) ($row['lookup_source'] ?? '');
                 $externalIdKey = (string) ($row['external_id'] ?? '');
 
-                return $nameKey . '|' . $sourceKey . '|' . $externalIdKey;
+                return $nameKey . '|' . $lookupKey . '|' . $externalIdKey;
             })
             ->values()
             ->all();

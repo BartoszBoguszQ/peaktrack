@@ -8,8 +8,8 @@ class Exercise extends Model
 {
     protected $fillable = [
         'name',
-        'muscle_group',
-        'external_source',
-        'external_id'
+        'source',
+        'external_id',
+        'user_id'
     ];
 }

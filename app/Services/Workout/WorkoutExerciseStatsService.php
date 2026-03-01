@@ -25,8 +25,8 @@ class WorkoutExerciseStatsService
             return 'local:' . $exerciseModel->exercise_id;
         }
 
-        if ($exerciseModel->external_source && $exerciseModel->external_id) {
-            return 'external:' . $exerciseModel->external_source . ':' . $exerciseModel->external_id;
+        if ($exerciseModel->source && $exerciseModel->external_id) {
+            return 'external:' . $exerciseModel->source . ':' . $exerciseModel->external_id;
         }
 
         return 'name:' . mb_strtolower($exerciseModel->name);
@@ -154,8 +154,8 @@ class WorkoutExerciseStatsService
             ->when($workoutExercise->exercise_id, function ($query) use ($workoutExercise) {
                 $query->where('exercise_id', $workoutExercise->exercise_id);
             }, function ($query) use ($workoutExercise) {
-                if ($workoutExercise->external_source && $workoutExercise->external_id) {
-                    $query->where('external_source', $workoutExercise->external_source)
+                if ($workoutExercise->source && $workoutExercise->external_id) {
+                    $query->where('source', $workoutExercise->source)
                         ->where('external_id', $workoutExercise->external_id);
                 } else {
                     $query->where('name', $workoutExercise->name);

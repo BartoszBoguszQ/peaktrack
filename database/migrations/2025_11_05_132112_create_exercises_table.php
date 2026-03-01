@@ -13,15 +13,18 @@ return new class extends Migration
     {
         Schema::create('exercises', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name', 120);
-            $table->string('muscle_group', 80)->nullable();
-            $table->string('external_source', 50)->nullable();
-            $table->string('external_id', 80)->nullable();
+            $table->string('source', 20)->default('manual');
+            $table->string('external_id', 120)->nullable();
             $table->timestamps();
             $table->index(['name']);
-            $table->index(['external_source','external_id']);
+            $table->index(['source', 'external_id']);
+            $table->unique(['user_id', 'name'], 'exercises_user_name_unique');
+            $table->unique(['source', 'external_id'], 'exercises_source_external_unique');
         });
     }
+
 
     /**
      * Reverse the migrations.

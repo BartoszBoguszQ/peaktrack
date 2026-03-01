@@ -30,7 +30,7 @@ class StoreWorkoutRequest extends FormRequest
             'notes' => ['nullable','string'],
             'exercises' => ['array'],
             'exercises.*.exercise_id' => ['nullable','integer','exists:exercises,id'],
-            'exercises.*.external_source' => ['nullable','string','max:50'],
+            'exercises.*.source' => ['nullable','string','max:50'],
             'exercises.*.external_id' => ['nullable','string','max:80'],
             'exercises.*.name' => ['required_with:exercises','string','max:120'],
             'exercises.*.order_no' => ['nullable','integer','min:1'],

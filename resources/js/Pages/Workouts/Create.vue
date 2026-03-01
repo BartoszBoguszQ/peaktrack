@@ -31,133 +31,120 @@ function clampInt(value, min, max) {
     return Math.min(max, Math.max(min, normalized))
 }
 
-function fromSeconds(seconds) {
-    const safeSeconds = Math.max(0, Number.parseInt(String(seconds ?? 0), 10) || 0)
-    const h = Math.floor(safeSeconds / 3600)
-    const m = Math.floor((safeSeconds % 3600) / 60)
-    const s = safeSeconds % 60
-    return [h, m, s].map(v => String(v).padStart(2, '0')).join(':')
-}
-
 function toSeconds(hms) {
-    const match = String(hms ?? '').match(/^(\d{2,}):(\d{2}):(\d{2})$/)
-    if (!match) return 0
-    const h = clampInt(match[1], 0, 999)
-    const m = clampInt(match[2], 0, 59)
-    const s = clampInt(match[3], 0, 59)
-    return h * 3600 + m * 60 + s
+    const parts = String(hms || '00:00:00').split(':').map((p) => Number.parseInt(p, 10) || 0)
+    const hh = parts[0] ?? 0
+    const mm = parts[1] ?? 0
+    const ss = parts[2] ?? 0
+    return hh * 3600 + mm * 60 + ss
 }
 
-function loadDurationPartsFromSeconds(seconds) {
-    const safeSeconds = Math.max(0, Number.parseInt(String(seconds ?? 0), 10) || 0)
-    durationHours.value = Math.floor(safeSeconds / 3600)
-    durationMinutes.value = Math.floor((safeSeconds % 3600) / 60)
-    durationSecondsPart.value = safeSeconds % 60
-    durationHms.value = fromSeconds(safeSeconds)
+function updateDurationFromParts() {
+    const hh = clampInt(durationHours.value, 0, 999)
+    const mm = clampInt(durationMinutes.value, 0, 59)
+    const ss = clampInt(durationSecondsPart.value, 0, 59)
+
+    durationHms.value = `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`
 }
 
-function syncDurationFromParts() {
-    durationHours.value = clampInt(durationHours.value, 0, 999)
-    durationMinutes.value = clampInt(durationMinutes.value, 0, 59)
-    durationSecondsPart.value = clampInt(durationSecondsPart.value, 0, 59)
+function updatePartsFromDuration() {
+    const totalSeconds = toSeconds(durationHms.value)
+    const hh = Math.floor(totalSeconds / 3600)
+    const mm = Math.floor((totalSeconds % 3600) / 60)
+    const ss = totalSeconds % 60
 
-    durationHms.value = `${pad2(durationHours.value)}:${pad2(durationMinutes.value)}:${pad2(durationSecondsPart.value)}`
-    form.duration_seconds = toSeconds(durationHms.value)
+    durationHours.value = hh
+    durationMinutes.value = mm
+    durationSecondsPart.value = ss
 }
 
-loadDurationPartsFromSeconds(form.duration_seconds || 0)
-
-watch([durationHours, durationMinutes, durationSecondsPart], () => {
-    syncDurationFromParts()
+watch(durationHms, () => {
+    updatePartsFromDuration()
 })
 
-function newUid() {
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
+watch([durationHours, durationMinutes, durationSecondsPart], () => {
+    updateDurationFromParts()
+})
 
-function makeEmptyExercise(orderNo, initialName = '') {
-    return {
-        uid: newUid(),
-        exercise_id: null,
-        external_source: null,
-        external_id: null,
-        picked_name: initialName || '',
-        display_name: initialName || '',
-        order_no: orderNo,
-        catalog_name: null,
-        sets: [
-            {
-                set_no: 1,
-                reps: null,
-                weight_kg: null,
-                rir: null,
-                rest_seconds: null
-            }
-        ]
+watch(isStrength, (value) => {
+    if (value) {
+        form.distance_km = 0
     }
-}
-
-const exerciseNameRefs = ref({})
-
-function setExerciseNameRef(uid) {
-    return (el) => {
-        if (el) {
-            exerciseNameRefs.value[uid] = el
-        }
-    }
-}
+})
 
 const exerciseSearchQuery = ref('')
 const exerciseSearchResults = ref([])
 const exerciseSearchLoading = ref(false)
 const exerciseSearchError = ref('')
+const isSearchOpen = computed(() => String(exerciseSearchQuery.value || '').trim().length >= 2)
 
-const isSearchOpen = ref(false)
-const searchBoxRef = ref(null)
+let exerciseSearchTimeout = null
 
-let searchDebounceTimer = null
-
-function closeSearch() {
-    isSearchOpen.value = false
-    exerciseSearchResults.value = []
-    exerciseSearchError.value = ''
-}
-
-function onSearchKeydown(e) {
-    if (e.key === 'Escape') {
-        closeSearch()
+watch(exerciseSearchQuery, () => {
+    if (exerciseSearchTimeout) {
+        clearTimeout(exerciseSearchTimeout)
     }
-}
-
-function onDocumentClick(e) {
-    const el = searchBoxRef.value
-    if (!el) return
-    if (!el.contains(e.target)) {
-        closeSearch()
-    }
-}
-
-window.addEventListener('click', onDocumentClick)
-
-onBeforeUnmount(() => {
-    window.removeEventListener('click', onDocumentClick)
-    clearTimeout(searchDebounceTimer)
+    exerciseSearchTimeout = setTimeout(() => {
+        searchExercises()
+    }, 250)
 })
 
-watch(exerciseSearchQuery, (value) => {
-    const query = String(value || '').trim()
-    clearTimeout(searchDebounceTimer)
+onBeforeUnmount(() => {
+    if (exerciseSearchTimeout) clearTimeout(exerciseSearchTimeout)
+})
 
-    if (query.length < 2) {
-        closeSearch()
+async function searchExercises() {
+    exerciseSearchError.value = ''
+    exerciseSearchResults.value = []
+    if (!exerciseSearchQuery.value || exerciseSearchQuery.value.length < 2) {
         return
     }
 
-    isSearchOpen.value = true
-    searchDebounceTimer = setTimeout(() => {
-        searchExercises()
-    }, 300)
-})
+    exerciseSearchLoading.value = true
+    try {
+        const response = await axios.get('/api/exercises/search', {
+            params: {query: exerciseSearchQuery.value}
+        })
+
+        const raw = response.data
+        const items = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : []
+
+        exerciseSearchResults.value = items.map((item) => {
+            const attributes = item?.attributes ?? {}
+
+            return {
+                id: item.id ?? null,
+                name: attributes.name ?? item.name ?? '',
+                muscle_group: attributes.muscle_group ?? item.muscle_group ?? null,
+                lookup_source: attributes.lookup_source ?? item.lookup_source ?? null,
+                source: attributes.source ?? item.source ?? null,
+                external_id: attributes.external_id ?? item.external_id ?? null
+            }
+        })
+    } catch (e) {
+        exerciseSearchError.value = 'Search failed'
+    } finally {
+        exerciseSearchLoading.value = false
+    }
+}
+
+function closeSearch() {
+    exerciseSearchResults.value = []
+    exerciseSearchError.value = ''
+    exerciseSearchLoading.value = false
+}
+
+function newUid() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+const exerciseNameRefs = ref({})
+
+function setExerciseNameRef(uid, el) {
+    if (!uid) return
+    if (el) exerciseNameRefs.value[uid] = el
+    else if (exerciseNameRefs.value[uid]) delete exerciseNameRefs.value[uid]
+}
 
 async function focusExerciseName(uid) {
     await nextTick()
@@ -165,6 +152,22 @@ async function focusExerciseName(uid) {
     if (el && typeof el.focus === 'function') {
         el.focus()
         if (typeof el.select === 'function') el.select()
+    }
+}
+
+function makeEmptyExercise(orderNo, initialName = '') {
+    return {
+        uid: newUid(),
+        exercise_id: null,
+        source: 'manual',
+        external_id: null,
+        picked_name: initialName || '',
+        display_name: initialName || '',
+        order_no: orderNo,
+        catalog_name: null,
+        sets: [
+            {set_no: 1, reps: null, weight_kg: null, rir: null, rest_seconds: null}
+        ]
     }
 }
 
@@ -179,7 +182,6 @@ function removeExercise(index) {
     if (removed?.uid && exerciseNameRefs.value[removed.uid]) {
         delete exerciseNameRefs.value[removed.uid]
     }
-
     form.exercises.splice(index, 1)
     form.exercises.forEach((ex, i) => {
         ex.order_no = i + 1
@@ -191,89 +193,37 @@ function addSet(exerciseIndex) {
     if (!exercise) return
     const nextNo = (exercise.sets?.length || 0) + 1
     exercise.sets = exercise.sets || []
-    exercise.sets.push({
-        set_no: nextNo,
-        reps: null,
-        weight_kg: null,
-        rir: null,
-        rest_seconds: null
-    })
+    exercise.sets.push({set_no: nextNo, reps: null, weight_kg: null, rir: null, rest_seconds: null})
 }
 
 function removeSet(exerciseIndex, setIndex) {
     const exercise = form.exercises[exerciseIndex]
-    if (!exercise?.sets) return
+    if (!exercise || !exercise.sets) return
     exercise.sets.splice(setIndex, 1)
-    exercise.sets.forEach((setItem, i) => {
-        setItem.set_no = i + 1
+    exercise.sets.forEach((s, i) => {
+        s.set_no = i + 1
     })
 }
 
-async function searchExercises() {
-    exerciseSearchError.value = ''
-    exerciseSearchResults.value = []
-
-    const query = String(exerciseSearchQuery.value || '').trim()
-    if (query.length < 2) {
-        closeSearch()
-        return
-    }
-
-    isSearchOpen.value = true
-    exerciseSearchLoading.value = true
-
-    try {
-        const response = await axios.get('/api/exercises/search', {
-            params: {query}
-        })
-
-        const raw = response.data
-        const items = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : []
-
-        exerciseSearchResults.value = items.map((item) => {
-            const attributes = item?.attributes ?? null
-            if (!attributes) return item
-
-            return {
-                id: item.id ?? null,
-                name: attributes.name ?? '',
-                muscle_group: attributes.muscle_group ?? null,
-                external_source: attributes.external_source ?? null,
-                external_id: attributes.external_id ?? null,
-                source: attributes.source ?? item.source ?? null
-            }
-        })
-    } catch (e) {
-        exerciseSearchError.value = 'Search failed'
-    } finally {
-        exerciseSearchLoading.value = false
-    }
-}
-
 function applyPickedToExercise(exercise, picked) {
-    const source = picked.source ?? picked?.attributes?.source ?? null
+    const attributes = picked?.attributes ?? {}
+    const lookupSource = attributes.lookup_source ?? picked.lookup_source ?? null
 
     const pickedId = picked.id ?? null
-    const pickedName = picked.name ?? picked?.attributes?.name ?? picked.title ?? picked?.attributes?.title ?? ''
-    const muscleGroup = picked.muscle_group ?? picked?.attributes?.muscle_group ?? null
-    const externalSource = picked.external_source ?? picked?.attributes?.external_source ?? null
-    const externalId = picked.external_id ?? picked?.attributes?.external_id ?? null
+    const pickedName = attributes.name ?? picked.name ?? ''
+    const externalId = attributes.external_id ?? picked.external_id ?? null
 
-    const isNumericId = pickedId !== null && /^\d+$/.test(String(pickedId))
-
-    if (source === 'local' && isNumericId) {
+    if (lookupSource === 'local' && pickedId !== null && /^\d+$/.test(String(pickedId))) {
         exercise.exercise_id = Number(pickedId)
-        exercise.external_source = null
+        exercise.source = 'manual'
         exercise.external_id = null
     } else {
         exercise.exercise_id = null
-        exercise.external_source = externalSource || source || 'external'
-        exercise.external_id = externalId || pickedId
+        exercise.source = 'api'
+        exercise.external_id = externalId !== null ? String(externalId) : (pickedId !== null ? String(pickedId) : null)
     }
 
     exercise.picked_name = pickedName || exercise.picked_name || ''
-    exercise.catalog_name = muscleGroup || exercise.catalog_name
-
     if (!String(exercise.display_name || '').trim()) {
         exercise.display_name = exercise.picked_name
     }
@@ -286,7 +236,6 @@ function addPickedExercise(picked) {
 
     closeSearch()
     exerciseSearchQuery.value = ''
-
     focusExerciseName(newExercise.uid)
 }
 
@@ -303,20 +252,46 @@ function submit() {
         notes: form.notes,
         exercises:
             form.type === 'Strength'
-                ? form.exercises.map((exerciseItem, exerciseIndex) => ({
-                    exercise_id: exerciseItem.exercise_id,
-                    external_source: exerciseItem.external_source,
-                    external_id: exerciseItem.external_id,
-                    name: String(exerciseItem.display_name || exerciseItem.picked_name || '').trim(),
-                    order_no: exerciseIndex + 1,
-                    sets: (exerciseItem.sets || []).map((setItem, setIndex) => ({
-                        set_no: setItem.set_no ?? setIndex + 1,
-                        reps: setItem.reps,
-                        weight_kg: setItem.weight_kg,
-                        rir: setItem.rir,
-                        rest_seconds: setItem.rest_seconds
-                    }))
-                }))
+                ? form.exercises.map((exerciseItem, exerciseIndex) => {
+                    const exerciseId = exerciseItem.exercise_id ?? null
+                    const name = String(exerciseItem.display_name || exerciseItem.picked_name || '').trim()
+
+                    if (exerciseId) {
+                        return {
+                            exercise_id: exerciseId,
+                            source: 'manual',
+                            external_id: null,
+                            name,
+                            order_no: exerciseIndex + 1,
+                            sets: (exerciseItem.sets || []).map((setItem, setIndex) => ({
+                                set_no: setItem.set_no ?? setIndex + 1,
+                                reps: setItem.reps,
+                                weight_kg: setItem.weight_kg,
+                                rir: setItem.rir,
+                                rest_seconds: setItem.rest_seconds
+                            }))
+                        }
+                    }
+
+                    const externalId = exerciseItem.external_id !== null && String(exerciseItem.external_id).trim() !== ''
+                        ? String(exerciseItem.external_id).trim()
+                        : null
+
+                    return {
+                        exercise_id: null,
+                        source: externalId ? 'api' : 'manual',
+                        external_id: externalId,
+                        name,
+                        order_no: exerciseIndex + 1,
+                        sets: (exerciseItem.sets || []).map((setItem, setIndex) => ({
+                            set_no: setItem.set_no ?? setIndex + 1,
+                            reps: setItem.reps,
+                            weight_kg: setItem.weight_kg,
+                            rir: setItem.rir,
+                            rest_seconds: setItem.rest_seconds
+                        }))
+                    }
+                })
                 : []
     }
 
@@ -329,26 +304,25 @@ function submit() {
 </script>
 
 <template>
+    <Head title="Add workout"/>
+
     <AuthenticatedLayout>
-        <Head title="Create Workout"/>
+        <template #header>
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Add workout</h2>
+                <Link
+                    :href="route('workouts.index')"
+                    class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                    Back
+                </Link>
+            </div>
+        </template>
 
-        <div class="py-6">
-            <div class="max-w-4xl mx-auto px-4 space-y-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Create workout</h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Add a new workout session.</p>
-                    </div>
-                    <Link
-                        href="/workouts"
-                        class="inline-flex items-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                    >
-                        Back
-                    </Link>
-                </div>
-
+        <div class="py-12">
+            <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
                 <form @submit.prevent="submit" class="space-y-6">
-                    <div class="rounded-2xl bg-white dark:bg-gray-800 p-6 space-y-6">
+                    <div class="rounded-2xl bg-white dark:bg-gray-800 p-6 space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -359,10 +333,7 @@ function submit() {
                                     type="date"
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                 />
-                                <div v-if="form.errors.date" class="mt-1 text-sm text-red-600">{{
-                                        form.errors.date
-                                    }}
-                                </div>
+                                <div v-if="form.errors.date" class="mt-1 text-sm text-red-600">{{ form.errors.date }}</div>
                             </div>
 
                             <div>
@@ -374,35 +345,23 @@ function submit() {
                                     class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                 >
                                     <option value="Run">Run</option>
-                                    <option value="Bike">Bike</option>
-                                    <option value="Swim">Swim</option>
+                                    <option value="Ride">Ride</option>
                                     <option value="Strength">Strength</option>
+                                    <option value="Other">Other</option>
                                 </select>
-                                <div v-if="form.errors.type" class="mt-1 text-sm text-red-600">{{
-                                        form.errors.type
-                                    }}
-                                </div>
+                                <div v-if="form.errors.type" class="mt-1 text-sm text-red-600">{{ form.errors.type }}</div>
                             </div>
-                        </div>
 
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
-                                <div class="flex items-center justify-between">
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                        Time (H:m:s)
-                                    </label>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-                                        {{ durationHms }}
-                                    </div>
-                                </div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    Duration
+                                </label>
 
-                                <div class="mt-1 flex items-center gap-2">
+                                <div class="mt-1 flex gap-2">
                                     <input
                                         v-model.number="durationHours"
                                         type="number"
                                         min="0"
-                                        max="999"
-                                        step="1"
                                         inputmode="numeric"
                                         placeholder="HH"
                                         class="h-11 flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-center tabular-nums"
@@ -412,7 +371,6 @@ function submit() {
                                         type="number"
                                         min="0"
                                         max="59"
-                                        step="1"
                                         inputmode="numeric"
                                         placeholder="MM"
                                         class="h-11 flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-center tabular-nums"
@@ -422,7 +380,6 @@ function submit() {
                                         type="number"
                                         min="0"
                                         max="59"
-                                        step="1"
                                         inputmode="numeric"
                                         placeholder="SS"
                                         class="h-11 flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-center tabular-nums"
@@ -489,9 +446,7 @@ function submit() {
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <div class="text-lg font-semibold text-gray-900 dark:text-white">Exercises</div>
-                                <div class="text-sm text-gray-500 dark:text-gray-400">Add exercises and sets for your
-                                    strength workout.
-                                </div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">Add exercises and sets for your strength workout.</div>
                             </div>
                             <button
                                 type="button"
@@ -503,8 +458,7 @@ function submit() {
                         </div>
 
                         <div class="grid grid-cols-1 gap-4">
-                            <div ref="searchBoxRef"
-                                 class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                            <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
                                 <div class="flex items-center justify-between gap-3">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
                                         Search exercise
@@ -522,34 +476,25 @@ function submit() {
                                 <div class="flex gap-2">
                                     <input
                                         v-model="exerciseSearchQuery"
-                                        @keydown="onSearchKeydown"
                                         type="text"
                                         placeholder="Type to search..."
                                         class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                     />
                                 </div>
 
-                                <div v-if="exerciseSearchLoading && isSearchOpen"
-                                     class="text-sm text-gray-500 dark:text-gray-400">Loading...
-                                </div>
-                                <div v-if="exerciseSearchError && isSearchOpen" class="text-sm text-red-600">
-                                    {{ exerciseSearchError }}
-                                </div>
+                                <div v-if="exerciseSearchLoading && isSearchOpen" class="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
+                                <div v-if="exerciseSearchError && isSearchOpen" class="text-sm text-red-600">{{ exerciseSearchError }}</div>
 
                                 <div v-if="isSearchOpen && exerciseSearchResults.length" class="mt-2 space-y-2">
                                     <div
                                         v-for="result in exerciseSearchResults"
-                                        :key="`${result.source || result.external_source || 'x'}-${result.id}`"
+                                        :key="`${result.lookup_source || 'x'}-${result.id}`"
                                         class="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-3"
                                     >
                                         <div class="min-w-0">
-                                            <div class="font-medium text-gray-900 dark:text-white truncate">
-                                                {{ result.name }}
-                                            </div>
+                                            <div class="font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                {{
-                                                    result.muscle_group || result.external_source || result.source || '-'
-                                                }}
+                                                {{ result.muscle_group || result.lookup_source || '-' }}
                                             </div>
                                         </div>
                                         <button
@@ -571,15 +516,13 @@ function submit() {
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                            {{ exercise.order_no }}.
-                                            {{ (exercise.display_name || exercise.picked_name) || 'Exercise' }}
+                                            {{ exercise.order_no }}. {{ (exercise.display_name || exercise.picked_name) || 'Exercise' }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                            <span
-                                                v-if="exercise.picked_name && exercise.display_name && exercise.picked_name !== exercise.display_name">
+                                            <span v-if="exercise.picked_name && exercise.display_name && exercise.picked_name !== exercise.display_name">
                                                 Catalog: {{ exercise.picked_name }} ·
                                             </span>
-                                            {{ exercise.catalog_name || exercise.external_source || '-' }}
+                                            {{ exercise.source || '-' }}
                                         </div>
                                     </div>
                                     <button
@@ -593,8 +536,7 @@ function submit() {
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your
-                                            name</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your name</label>
                                         <input
                                             :ref="setExerciseNameRef(exercise.uid)"
                                             v-model="exercise.display_name"
@@ -604,8 +546,7 @@ function submit() {
                                         />
                                     </div>
                                     <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 dark:text-gray-200">Order</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Order</label>
                                         <input
                                             v-model.number="exercise.order_no"
                                             type="number"
@@ -642,58 +583,22 @@ function submit() {
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            <tr v-for="(setItem, setIndex) in exercise.sets" :key="setIndex"
-                                                class="border-t border-gray-100 dark:border-gray-700">
-                                                <td class="px-3 py-2 text-gray-900 dark:text-white">{{
-                                                        setItem.set_no
-                                                    }}
+                                            <tr v-for="(setItem, setIndex) in exercise.sets" :key="setIndex" class="border-t border-gray-100 dark:border-gray-700">
+                                                <td class="px-3 py-2 text-gray-900 dark:text-white">{{ setItem.set_no }}</td>
+                                                <td class="px-3 py-2">
+                                                    <input v-model.number="setItem.reps" type="number" min="0" step="1" inputmode="numeric" class="w-24 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
                                                 </td>
                                                 <td class="px-3 py-2">
-                                                    <input
-                                                        v-model.number="setItem.reps"
-                                                        type="number"
-                                                        min="0"
-                                                        step="1"
-                                                        inputmode="numeric"
-                                                        class="w-24 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                                                    />
+                                                    <input v-model.number="setItem.weight_kg" type="number" min="0" step="0.5" inputmode="decimal" class="w-28 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
                                                 </td>
                                                 <td class="px-3 py-2">
-                                                    <input
-                                                        v-model.number="setItem.weight_kg"
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.5"
-                                                        inputmode="decimal"
-                                                        class="w-28 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                                                    />
+                                                    <input v-model.number="setItem.rir" type="number" min="0" step="1" inputmode="numeric" class="w-20 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
                                                 </td>
                                                 <td class="px-3 py-2">
-                                                    <input
-                                                        v-model.number="setItem.rir"
-                                                        type="number"
-                                                        min="0"
-                                                        step="1"
-                                                        inputmode="numeric"
-                                                        class="w-20 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                                                    />
+                                                    <input v-model.number="setItem.rest_seconds" type="number" min="0" step="1" inputmode="numeric" class="w-24 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
                                                 </td>
                                                 <td class="px-3 py-2">
-                                                    <input
-                                                        v-model.number="setItem.rest_seconds"
-                                                        type="number"
-                                                        min="0"
-                                                        step="1"
-                                                        inputmode="numeric"
-                                                        class="w-24 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                                                    />
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    <button
-                                                        type="button"
-                                                        @click="removeSet(exerciseIndex, setIndex)"
-                                                        class="rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
-                                                    >
+                                                    <button type="button" @click="removeSet(exerciseIndex, setIndex)" class="rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700">
                                                         Remove
                                                     </button>
                                                 </td>
@@ -702,8 +607,7 @@ function submit() {
                                         </table>
                                     </div>
 
-                                    <div v-if="form.errors[`exercises.${exerciseIndex}.exercise_id`]"
-                                         class="text-sm text-red-600">
+                                    <div v-if="form.errors[`exercises.${exerciseIndex}.exercise_id`]" class="text-sm text-red-600">
                                         {{ form.errors[`exercises.${exerciseIndex}.exercise_id`] }}
                                     </div>
                                 </div>

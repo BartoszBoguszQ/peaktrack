@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ExerciseLookupController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WorkoutController;
 use App\Http\Controllers\WorkoutExerciseStatsController;
@@ -43,6 +44,8 @@ Route::middleware(['auth','verified'])->group(function () {
 
     Route::get('/workouts/exercises/{workoutExercise}/stats', [WorkoutExerciseStatsController::class,'show'])->name('workouts.exercise.stats');
     Route::get('/strength-exercises', [WorkoutExerciseStatsController::class, 'index'])->name('strength.exercises.index');
+
+    Route::get('/api/exercises/search', [ExerciseLookupController::class, 'search'])->name('api.exercises.search');
 });
 
 require __DIR__.'/auth.php';

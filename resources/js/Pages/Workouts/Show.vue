@@ -26,7 +26,7 @@ const workoutExercises = computed(() => {
         return {
             id: exerciseItem?.id ?? null,
             exercise_id: exerciseAttributes.exercise_id ?? null,
-            external_source: exerciseAttributes.external_source ?? null,
+            source: exerciseAttributes.source ?? null,
             external_id: exerciseAttributes.external_id ?? null,
             name: exerciseAttributes.name ?? '',
             order_no: exerciseAttributes.order_no ?? null,

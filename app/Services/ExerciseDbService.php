@@ -96,7 +96,6 @@ class ExerciseDbService
                 'id' => $id,
                 'name' => $name,
                 'muscle_group' => $bodyParts[0] ?? null,
-                'external_source' => 'exercisedb',
                 'external_id' => $id,
                 'body_parts' => $bodyParts,
                 'equipments' => $equipments,

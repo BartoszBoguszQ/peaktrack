@@ -14,7 +14,7 @@ class WorkoutExercise extends Model
         'name',
         'order_no',
         'external_id',
-        'external_source'
+        'source'
     ];
 
     public function workout(): BelongsTo

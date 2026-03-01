@@ -10,10 +10,12 @@ class ExerciseLookupController extends Controller
 {
     public function search(ExerciseSearchRequest $request, ExerciseLookupService $exerciseLookupService)
     {
+        $user = $request->user();
+
         $queryString = (string) $request->input('query', '');
         $limit = (int) $request->input('limit', 10);
 
-        $results = $exerciseLookupService->search($queryString, $limit);
+        $results = $exerciseLookupService->search($user, $queryString, $limit);
 
         return ExerciseLookupResource::collection(collect($results));
     }

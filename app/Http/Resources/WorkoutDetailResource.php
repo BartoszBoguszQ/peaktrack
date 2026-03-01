@@ -60,7 +60,7 @@ class WorkoutDetailResource extends JsonResource
                 return [
                     'id' => $exerciseModel->id,
                     'exercise_id' => $exerciseModel->exercise_id,
-                    'external_source' => $exerciseModel->external_source,
+                    'source' => $exerciseModel->source,
                     'external_id' => $exerciseModel->external_id,
                     'name' => $exerciseModel->name,
                     'order_no' => $exerciseModel->order_no,
@@ -104,7 +104,7 @@ class WorkoutDetailResource extends JsonResource
                     'id' => $exerciseModel->id,
                     'attributes' => [
                         'exercise_id' => $exerciseModel->exercise_id,
-                        'external_source' => $exerciseModel->external_source,
+                        'source' => $exerciseModel->source,
                         'external_id' => $exerciseModel->external_id,
                         'name' => $exerciseModel->name,
                         'order_no' => $exerciseModel->order_no,
