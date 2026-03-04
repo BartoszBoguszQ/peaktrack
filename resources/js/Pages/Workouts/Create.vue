@@ -16,6 +16,13 @@ const form = useForm({
 
 const isStrength = computed(() => form.type === 'Strength')
 
+const hasErrors = computed(() => Object.keys(form.errors || {}).length > 0)
+const errorEntries = computed(() => Object.entries(form.errors || {}))
+
+function fieldError(key) {
+    return (form.errors && form.errors[key]) ? form.errors[key] : null
+}
+
 const durationHms = ref('00:00:00')
 const durationHours = ref(0)
 const durationMinutes = ref(0)
@@ -45,6 +52,7 @@ function updateDurationFromParts() {
     const ss = clampInt(durationSecondsPart.value, 0, 59)
 
     durationHms.value = `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`
+    form.duration_seconds = toSeconds(durationHms.value)
 }
 
 function updatePartsFromDuration() {
@@ -322,6 +330,18 @@ function submit() {
         <div class="py-12">
             <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
                 <form @submit.prevent="submit" class="space-y-6">
+                    <div v-if="hasErrors" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+                        <div class="font-semibold">Fix the errors below:</div>
+                        <ul class="mt-2 list-disc space-y-1 pl-5">
+                            <li v-for="([key, message], idx) in errorEntries" :key="key" v-show="idx < 8">
+                                {{ message }}
+                            </li>
+                        </ul>
+                        <div v-if="errorEntries.length > 8" class="mt-2 text-xs opacity-80">
+                            And {{ errorEntries.length - 8 }} more.
+                        </div>
+                    </div>
+
                     <div class="rounded-2xl bg-white dark:bg-gray-800 p-6 space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -353,15 +373,21 @@ function submit() {
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    Duration
-                                </label>
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                        Duration
+                                    </label>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                                        {{ durationHms }}
+                                    </div>
+                                </div>
 
                                 <div class="mt-1 flex gap-2">
                                     <input
                                         v-model.number="durationHours"
                                         type="number"
                                         min="0"
+                                        max="999"
                                         inputmode="numeric"
                                         placeholder="HH"
                                         class="h-11 flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-center tabular-nums"
@@ -435,10 +461,7 @@ function submit() {
                                 rows="3"
                                 class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                             ></textarea>
-                            <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">{{
-                                    form.errors.notes
-                                }}
-                            </div>
+                            <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">{{ form.errors.notes }}</div>
                         </div>
                     </div>
 
@@ -455,6 +478,10 @@ function submit() {
                             >
                                 Add exercise
                             </button>
+                        </div>
+
+                        <div v-if="fieldError('exercises')" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+                            {{ fieldError('exercises') }}
                         </div>
 
                         <div class="grid grid-cols-1 gap-4">
@@ -544,6 +571,9 @@ function submit() {
                                             placeholder="Exercise name"
                                             class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                         />
+                                        <div v-if="fieldError(`exercises.${exerciseIndex}.name`) || fieldError(`exercises.${exerciseIndex}.display_name`)" class="mt-1 text-sm text-red-600">
+                                            {{ fieldError(`exercises.${exerciseIndex}.name`) || fieldError(`exercises.${exerciseIndex}.display_name`) }}
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Order</label>
@@ -555,6 +585,9 @@ function submit() {
                                             inputmode="numeric"
                                             class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                                         />
+                                        <div v-if="fieldError(`exercises.${exerciseIndex}.order_no`)" class="mt-1 text-sm text-red-600">
+                                            {{ fieldError(`exercises.${exerciseIndex}.order_no`) }}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -585,19 +618,31 @@ function submit() {
                                             <tbody>
                                             <tr v-for="(setItem, setIndex) in exercise.sets" :key="setIndex" class="border-t border-gray-100 dark:border-gray-700">
                                                 <td class="px-3 py-2 text-gray-900 dark:text-white">{{ setItem.set_no }}</td>
-                                                <td class="px-3 py-2">
+                                                <td class="px-3 py-2 align-top">
                                                     <input v-model.number="setItem.reps" type="number" min="0" step="1" inputmode="numeric" class="w-24 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                                                    <div v-if="fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.reps`)" class="mt-1 text-xs text-red-600">
+                                                        {{ fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.reps`) }}
+                                                    </div>
                                                 </td>
-                                                <td class="px-3 py-2">
+                                                <td class="px-3 py-2 align-top">
                                                     <input v-model.number="setItem.weight_kg" type="number" min="0" step="0.5" inputmode="decimal" class="w-28 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                                                    <div v-if="fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.weight_kg`)" class="mt-1 text-xs text-red-600">
+                                                        {{ fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.weight_kg`) }}
+                                                    </div>
                                                 </td>
-                                                <td class="px-3 py-2">
-                                                    <input v-model.number="setItem.rir" type="number" min="0" step="1" inputmode="numeric" class="w-20 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                                                <td class="px-3 py-2 align-top">
+                                                    <input v-model.number="setItem.rir" type="number" min="0" step="1" max="10" inputmode="numeric" class="w-20 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                                                    <div v-if="fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.rir`)" class="mt-1 text-xs text-red-600">
+                                                        {{ fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.rir`) }}
+                                                    </div>
                                                 </td>
-                                                <td class="px-3 py-2">
+                                                <td class="px-3 py-2 align-top">
                                                     <input v-model.number="setItem.rest_seconds" type="number" min="0" step="1" inputmode="numeric" class="w-24 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                                                    <div v-if="fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.rest_seconds`)" class="mt-1 text-xs text-red-600">
+                                                        {{ fieldError(`exercises.${exerciseIndex}.sets.${setIndex}.rest_seconds`) }}
+                                                    </div>
                                                 </td>
-                                                <td class="px-3 py-2">
+                                                <td class="px-3 py-2 align-top">
                                                     <button type="button" @click="removeSet(exerciseIndex, setIndex)" class="rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700">
                                                         Remove
                                                     </button>
@@ -607,8 +652,12 @@ function submit() {
                                         </table>
                                     </div>
 
-                                    <div v-if="form.errors[`exercises.${exerciseIndex}.exercise_id`]" class="text-sm text-red-600">
-                                        {{ form.errors[`exercises.${exerciseIndex}.exercise_id`] }}
+                                    <div v-if="fieldError(`exercises.${exerciseIndex}.sets`)" class="mt-2 text-sm text-red-600">
+                                        {{ fieldError(`exercises.${exerciseIndex}.sets`) }}
+                                    </div>
+
+                                    <div v-if="fieldError(`exercises.${exerciseIndex}.exercise_id`)" class="text-sm text-red-600">
+                                        {{ fieldError(`exercises.${exerciseIndex}.exercise_id`) }}
                                     </div>
                                 </div>
                             </div>
