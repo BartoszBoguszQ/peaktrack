@@ -75,7 +75,7 @@ watch(
                                     :active="route().current('analytics.index')"
                                     class="dark:text-white"
                                 >
-                                    Endurance Analytics
+                                    Training Load
                                 </NavLink>
 
                                 <NavLink

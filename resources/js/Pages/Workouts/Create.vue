@@ -366,6 +366,7 @@ function submit() {
                                 >
                                     <option value="Run">Run</option>
                                     <option value="Ride">Ride</option>
+                                    <option value="Swim">Swim</option>
                                     <option value="Strength">Strength</option>
                                     <option value="Other">Other</option>
                                 </select>

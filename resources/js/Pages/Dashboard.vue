@@ -13,6 +13,16 @@ const stats = ref(page.props?.stats ?? {
 const recent = ref(page.props?.recent ?? [
     { id: 1, date: '2025-10-12', type: 'Run', duration: '00:32:14', distance_km: 5.2, calories: 410 },
 ])
+
+const isStrength = (item) => String(item?.type ?? '').toLowerCase() === 'strength'
+
+const formatDistance = (item) => {
+    if (isStrength(item)) return '-'
+    const v = item?.distance_km
+    if (v === null || v === undefined || v === '') return '-'
+    const n = Number(v)
+    return Number.isFinite(n) ? n.toFixed(2) : String(v)
+}
 </script>
 
 <template>
@@ -64,7 +74,7 @@ const recent = ref(page.props?.recent ?? [
                                     </td>
                                     <td class="px-4 py-3 text-gray-900 dark:text-white">{{ item.type }}</td>
                                     <td class="px-4 py-3 text-gray-900 dark:text-white">{{ item.duration }}</td>
-                                    <td class="px-4 py-3 text-gray-900 dark:text-white">{{ item.distance_km }}</td>
+                                    <td class="px-4 py-3 text-gray-900 dark:text-white">{{ formatDistance(item) }}</td>
                                     <td class="px-4 py-3 text-gray-900 dark:text-white">{{ item.calories }}</td>
                                 </tr>
                                 </tbody>

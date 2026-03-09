@@ -318,8 +318,8 @@ function submit() {
                                 >
                                     <option value="Run">Run</option>
                                     <option value="Ride">Ride</option>
+                                    <option value="Swim">Swim</option>
                                     <option value="Strength">Strength</option>
-                                    <option value="Walk">Walk</option>
                                     <option value="Other">Other</option>
                                 </select>
                                 <div v-if="fieldError('type')" class="mt-1 text-sm text-red-600">{{ fieldError('type') }}</div>
