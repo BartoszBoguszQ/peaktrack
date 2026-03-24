@@ -47,6 +47,7 @@ const durationHms = ref('00:00:00')
 const durationHours = ref(0)
 const durationMinutes = ref(0)
 const durationSecondsPart = ref(0)
+const syncingDuration = ref(false)
 
 function pad2(value) {
     return String(Math.max(0, Number.isFinite(value) ? value : 0)).padStart(2, '0').slice(-2)
@@ -63,20 +64,40 @@ function toSeconds(hms) {
     const hh = parts[0] ?? 0
     const mm = parts[1] ?? 0
     const ss = parts[2] ?? 0
+
     return hh * 3600 + mm * 60 + ss
 }
 
-function updateDurationFromParts() {
+function secondsToHms(totalSeconds) {
+    const total = Math.max(0, Number.parseInt(totalSeconds ?? 0, 10) || 0)
+    const hh = Math.floor(total / 3600)
+    const mm = Math.floor((total % 3600) / 60)
+    const ss = total % 60
+
+    return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`
+}
+
+function syncDurationFromParts() {
+    syncingDuration.value = true
+
     const hh = clampInt(durationHours.value, 0, 999)
     const mm = clampInt(durationMinutes.value, 0, 59)
     const ss = clampInt(durationSecondsPart.value, 0, 59)
 
+    durationHours.value = hh
+    durationMinutes.value = mm
+    durationSecondsPart.value = ss
+
     durationHms.value = `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`
-    form.duration_seconds = toSeconds(durationHms.value)
+    form.duration_seconds = hh * 3600 + mm * 60 + ss
+
+    syncingDuration.value = false
 }
 
-function updatePartsFromDuration() {
-    const totalSeconds = toSeconds(durationHms.value)
+function syncPartsFromFormDuration() {
+    syncingDuration.value = true
+
+    const totalSeconds = Math.max(0, Number.parseInt(form.duration_seconds ?? 0, 10) || 0)
     const hh = Math.floor(totalSeconds / 3600)
     const mm = Math.floor((totalSeconds % 3600) / 60)
     const ss = totalSeconds % 60
@@ -84,14 +105,29 @@ function updatePartsFromDuration() {
     durationHours.value = hh
     durationMinutes.value = mm
     durationSecondsPart.value = ss
+    durationHms.value = secondsToHms(totalSeconds)
+
+    syncingDuration.value = false
 }
 
-watch(durationHms, () => {
-    updatePartsFromDuration()
+watch([durationHours, durationMinutes, durationSecondsPart], () => {
+    if (syncingDuration.value) return
+    syncDurationFromParts()
 })
 
-watch([durationHours, durationMinutes, durationSecondsPart], () => {
-    updateDurationFromParts()
+watch(() => form.duration_seconds, () => {
+    if (syncingDuration.value) return
+    syncPartsFromFormDuration()
+})
+
+watch(durationHms, (value) => {
+    if (syncingDuration.value) return
+
+    syncingDuration.value = true
+    form.duration_seconds = toSeconds(value)
+    syncingDuration.value = false
+
+    syncPartsFromFormDuration()
 })
 
 watch(isStrength, (value) => {
@@ -100,7 +136,7 @@ watch(isStrength, (value) => {
     }
 })
 
-updatePartsFromDuration()
+syncPartsFromFormDuration()
 
 const exerciseSearchQuery = ref('')
 const exerciseSearchResults = ref([])
@@ -129,6 +165,7 @@ function removeExercise(index) {
 function addSet(exerciseIndex) {
     const exercise = form.exercises[exerciseIndex]
     if (!exercise) return
+
     const nextNo = (exercise.sets?.length || 0) + 1
     exercise.sets = exercise.sets || []
     exercise.sets.push({ set_no: nextNo, reps: null, weight_kg: null, rir: null, rest_seconds: null })
@@ -137,18 +174,23 @@ function addSet(exerciseIndex) {
 function removeSet(exerciseIndex, setIndex) {
     const exercise = form.exercises[exerciseIndex]
     if (!exercise || !exercise.sets) return
+
     exercise.sets.splice(setIndex, 1)
-    exercise.sets.forEach((s, i) => { s.set_no = i + 1 })
+    exercise.sets.forEach((s, i) => {
+        s.set_no = i + 1
+    })
 }
 
 async function searchExercises() {
     exerciseSearchError.value = ''
     exerciseSearchResults.value = []
+
     if (!exerciseSearchQuery.value || exerciseSearchQuery.value.length < 2) {
         return
     }
 
     exerciseSearchLoading.value = true
+
     try {
         const response = await axios.get('/api/exercises/search', {
             params: { query: exerciseSearchQuery.value }
@@ -159,6 +201,7 @@ async function searchExercises() {
 
         exerciseSearchResults.value = items.map((item) => {
             const attributes = item?.attributes ?? {}
+
             return {
                 id: item.id ?? null,
                 name: attributes.name ?? item.name ?? '',
